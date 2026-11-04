@@ -1,0 +1,8 @@
+{
+  "name": "Remix Remix Remix Remix ZLCE3.22-MobBenc",
+  "description": "ZLCE3.22 Mobile Bencmark dari cassa",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

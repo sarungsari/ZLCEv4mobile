@@ -1,0 +1,556 @@
+import React, { useState, useMemo, useEffect } from 'react';
+import { 
+  Sparkles, 
+  Copy, 
+  Check, 
+  Download, 
+  FileText, 
+  Cpu, 
+  ShieldCheck, 
+  Users, 
+  Layers, 
+  GitBranch, 
+  Terminal, 
+  Sliders, 
+  CheckCircle2, 
+  ArrowRight,
+  ExternalLink,
+  Zap,
+  Info,
+  RefreshCw,
+  FolderGit2
+} from 'lucide-react';
+import { ParsedSessionState, ZLCETask, ParsedBacklogTask, TabType } from '../../types/zlce';
+import { TeamMember } from '../../types/mobile';
+import { TEAM_MEMBERS } from '../../data/teamMembers';
+import { 
+  generatePortableContextPack, 
+  TargetAIProvider, 
+  TokenBudgetPreset, 
+  getAIProviderLabel, 
+  estimateTokenCount 
+} from '../../utils/contextPackGenerator';
+import { copyText } from '../../utils/clipboard';
+import { downloadMarkdownBlob } from '../../utils/fileExport';
+import { parseTasksMarkdown } from '../../utils/markdownParser';
+
+interface ContextPackTabProps {
+  sessionState: ParsedSessionState;
+  onNavigateTab?: (tab: TabType) => void;
+  initialTaskId?: string;
+  onSelectMember?: (memberId: string) => void;
+}
+
+export const ContextPackTab: React.FC<ContextPackTabProps> = ({
+  sessionState,
+  onNavigateTab,
+  initialTaskId,
+  onSelectMember
+}) => {
+  // Load tasks from TASKS.md if available in localStorage or raw session
+  const [tasksCatalog, setTasksCatalog] = useState<ParsedBacklogTask[]>([]);
+  
+  useEffect(() => {
+    // Try to load cached TASKS.md from localStorage
+    try {
+      const savedTasks = localStorage.getItem('zlce_workspace_tasks_md');
+      if (savedTasks) {
+        const parsed = parseTasksMarkdown(savedTasks);
+        if (parsed.tasks && parsed.tasks.length > 0) {
+          setTasksCatalog(parsed.tasks);
+          return;
+        }
+      }
+    } catch {
+      // fallback
+    }
+
+    // Otherwise fetch or fallback
+    fetch('/TASKS.md')
+      .then(r => r.ok ? r.text() : '')
+      .then(text => {
+        if (text) {
+          const parsed = parseTasksMarkdown(text);
+          if (parsed.tasks && parsed.tasks.length > 0) {
+            setTasksCatalog(parsed.tasks);
+            localStorage.setItem('zlce_workspace_tasks_md', text);
+          }
+        }
+      })
+      .catch(() => {
+        // silent fallback
+      });
+  }, []);
+
+  // Map of task details by ID
+  const taskDetailMap = useMemo(() => {
+    const map = new Map<string, ParsedBacklogTask>();
+    tasksCatalog.forEach(t => map.set(t.id, t));
+    return map;
+  }, [tasksCatalog]);
+
+  // Determine active task ID
+  const [selectedTaskId, setSelectedTaskId] = useState<string>(() => {
+    if (initialTaskId) return initialTaskId;
+    // Prefer IN_PROGRESS task, then READY task, then default
+    const inProgress = sessionState.tasks.find(t => t.status === 'IN_PROGRESS');
+    if (inProgress) return inProgress.id;
+    const ready = sessionState.tasks.find(t => t.status === 'READY');
+    if (ready) return ready.id;
+    return 'TASK-013';
+  });
+
+  // Active Team Member State
+  const [activeMemberId, setActiveMemberId] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('zlce_active_member_id');
+      if (saved && TEAM_MEMBERS.some(m => m.id === saved)) {
+        return saved;
+      }
+    } catch {
+      // fallback
+    }
+    return 'eko';
+  });
+
+  const activeMember: TeamMember = useMemo(() => {
+    return TEAM_MEMBERS.find(m => m.id === activeMemberId) || TEAM_MEMBERS[0];
+  }, [activeMemberId]);
+
+  const handleMemberChange = (id: string) => {
+    setActiveMemberId(id);
+    try {
+      localStorage.setItem('zlce_active_member_id', id);
+    } catch {
+      // ignore
+    }
+    if (onSelectMember) {
+      onSelectMember(id);
+    }
+  };
+
+  // Target AI Provider
+  const [targetAi, setTargetAi] = useState<TargetAIProvider>('gemini');
+
+  // Token Budget Preset
+  const [tokenBudgetPreset, setTokenBudgetPreset] = useState<TokenBudgetPreset>('gemini-1m');
+
+  // Mode
+  const [mode, setMode] = useState<'FULL' | 'LITE'>('FULL');
+
+  // Custom instruction
+  const [customInstructions, setCustomInstructions] = useState<string>('');
+
+  // Copy feedback state
+  const [isCopied, setIsCopied] = useState<boolean>(false);
+  const [activeTabMode, setActiveTabMode] = useState<'preview' | 'raw'>('preview');
+
+  // Find currently selected ZLCETask object
+  const currentTask: ZLCETask = useMemo(() => {
+    const found = sessionState.tasks.find(t => t.id === selectedTaskId);
+    if (found) return found;
+
+    // Fallback constructed task
+    const catalogItem = taskDetailMap.get(selectedTaskId);
+    return {
+      id: selectedTaskId,
+      name: catalogItem?.title || `Implementasi ${selectedTaskId}`,
+      dependencies: catalogItem?.dependencies || 'TASK-012',
+      status: 'IN_PROGRESS',
+      evidence: '-',
+      approved: '-'
+    };
+  }, [selectedTaskId, sessionState.tasks, taskDetailMap]);
+
+  // Generate the Context Pack
+  const contextPackOutput = useMemo(() => {
+    const detail = taskDetailMap.get(selectedTaskId);
+    return generatePortableContextPack({
+      task: currentTask,
+      taskDetail: detail,
+      sessionState,
+      activeMember,
+      targetAi,
+      tokenBudgetPreset,
+      mode,
+      customInstructions: customInstructions.trim() || undefined
+    });
+  }, [currentTask, selectedTaskId, taskDetailMap, sessionState, activeMember, targetAi, tokenBudgetPreset, mode, customInstructions]);
+
+  // Copy Context Pack Handler
+  const handleCopy = async () => {
+    const success = await copyText(contextPackOutput.markdown);
+    if (success) {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    }
+  };
+
+  // Download Context Pack Handler
+  const handleDownload = () => {
+    const filename = `CONTEXT_PACK_${selectedTaskId}_${activeMember.id}.md`;
+    downloadMarkdownBlob(contextPackOutput.markdown, { filename });
+  };
+
+  return (
+    <div className="space-y-4 sm:space-y-6 pb-12 animate-in fade-in">
+      {/* 1. Header Banner */}
+      <div className="rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/80 border border-slate-800 shadow-xl p-4 sm:p-6 space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="space-y-1.5 sm:space-y-2">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-mono text-slate-400">
+              <span className="text-cyan-400 font-bold tracking-wider">FASE 3</span>
+              <span aria-hidden="true" className="text-slate-600">·</span>
+              <span className="text-emerald-400">TASK-013</span>
+              <span aria-hidden="true" className="text-slate-600">·</span>
+              <span className="text-indigo-300">BLUEPRINT 14: MULTI-AI TEAM</span>
+              <span aria-hidden="true" className="text-slate-600">·</span>
+              <span className="text-amber-300">SCHEMA-BEFORE-DATA</span>
+            </div>
+
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
+              <Sparkles className="w-6 h-6 text-amber-400 shrink-0" />
+              <span>Portable Context Pack Generator</span>
+            </h1>
+            <p className="text-slate-300 text-xs sm:text-sm max-w-3xl leading-relaxed">
+              Membangkitkan paket konteks mandiri (self-contained) yang mematuhi <span className="text-cyan-300 font-semibold">Invarian I1 (All in Files)</span> dan <span className="text-emerald-300 font-semibold">Invarian I2 (Cold-Start Resume)</span>. Salin ke sesi AI baru mana pun (Gemini, Claude, GPT) tanpa perlu riwayat obrolan sebelumnya!
+            </p>
+          </div>
+
+          {/* Quick Action Buttons */}
+          <div className="flex flex-col sm:flex-row lg:flex-col gap-2 shrink-0 w-full sm:w-auto">
+            <button
+              onClick={handleCopy}
+              className="touch-target-44 min-h-[44px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-cyan-600 hover:bg-cyan-500 text-white shadow-md active:scale-95 transition"
+            >
+              {isCopied ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
+              <span>{isCopied ? 'Context Pack Tersalin!' : 'Salin Context Pack (1-Ketukan)'}</span>
+            </button>
+
+            <button
+              onClick={handleDownload}
+              className="touch-target-44 min-h-[44px] flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-semibold text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 active:scale-95 transition"
+            >
+              <Download className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Unduh Berkas (.md)</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 5 Invariants Badges */}
+        <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center gap-2 text-[10px] sm:text-[11px] font-mono">
+          <span className="text-slate-400 font-semibold">Invarian Terpenuhi:</span>
+          <span className="px-2 py-0.5 rounded bg-cyan-950/70 text-cyan-300 border border-cyan-800/60">
+            I1: All in Files
+          </span>
+          <span className="px-2 py-0.5 rounded bg-emerald-950/70 text-emerald-300 border border-emerald-800/60">
+            I2: Cold-Start Resume
+          </span>
+          <span className="px-2 py-0.5 rounded bg-indigo-950/70 text-indigo-300 border border-indigo-800/60">
+            I3: ZLCE Core 4-Gerbang
+          </span>
+          <span className="px-2 py-0.5 rounded bg-purple-950/70 text-purple-300 border border-purple-800/60">
+            I4: Strict Provenance
+          </span>
+          <span className="px-2 py-0.5 rounded bg-amber-950/70 text-amber-300 border border-amber-800/60">
+            I5: Branch task/{selectedTaskId}
+          </span>
+        </div>
+      </div>
+
+      {/* 2. Configuration & Parameter Form Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        {/* Left Column (2 Cols): Task & AI Engine Controls */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl space-y-4">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-2.5">
+              <Sliders className="w-4 h-4 text-cyan-400" />
+              <span>Konfigurasi Paket Konteks Portabel</span>
+            </h3>
+
+            {/* Task Selector Dropdown */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono font-semibold text-slate-300 flex items-center justify-between">
+                <span>1. Pilih Mandat Task Aktif:</span>
+                <span className="text-[11px] text-cyan-400">Total {sessionState.tasks.length || 43} Task Terdaftar</span>
+              </label>
+              <select
+                value={selectedTaskId}
+                onChange={e => setSelectedTaskId(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-100 font-mono focus:outline-none focus:border-cyan-500 touch-target-44"
+              >
+                {sessionState.tasks.map(t => {
+                  const detail = taskDetailMap.get(t.id);
+                  return (
+                    <option key={t.id} value={t.id}>
+                      {t.id}: {detail?.title || t.name} [{t.status}]
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            {/* AI Provider & Token Budget Presets Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Target AI Engine */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono font-semibold text-slate-300">
+                  2. Model AI Target (Engine):
+                </label>
+                <select
+                  value={targetAi}
+                  onChange={e => {
+                    const val = e.target.value as TargetAIProvider;
+                    setTargetAi(val);
+                    // auto adapt preset
+                    if (val === 'gemini') setTokenBudgetPreset('gemini-1m');
+                    else if (val === 'claude') setTokenBudgetPreset('claude-30k');
+                    else if (val === 'chatgpt') setTokenBudgetPreset('gpt-128k');
+                    else setTokenBudgetPreset('compact-8k');
+                  }}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-100 font-mono focus:outline-none focus:border-cyan-500 touch-target-44"
+                >
+                  <option value="gemini">Google Gemini (1.5 Pro / Flash / 2.0 / 3.8)</option>
+                  <option value="claude">Anthropic Claude (3.5 Sonnet / Haiku)</option>
+                  <option value="chatgpt">OpenAI ChatGPT (GPT-4o / o1)</option>
+                  <option value="deepseek">DeepSeek (V3 / R1 / Coder)</option>
+                  <option value="qwen">Alibaba Qwen (2.5 Coder)</option>
+                  <option value="generic">Universal Standard (Semua Model AI)</option>
+                </select>
+                <p className="text-[10px] text-slate-400 font-mono">
+                  {getAIProviderLabel(targetAi)}
+                </p>
+              </div>
+
+              {/* Token Budget Preset */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono font-semibold text-slate-300">
+                  3. Token Budget Preset:
+                </label>
+                <select
+                  value={tokenBudgetPreset}
+                  onChange={e => setTokenBudgetPreset(e.target.value as TokenBudgetPreset)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-100 font-mono focus:outline-none focus:border-cyan-500 touch-target-44"
+                >
+                  <option value="gemini-1m">Gemini 1M+ (Komprehensif Lengkap)</option>
+                  <option value="claude-30k">Claude 30K (Presisi Tinggi Terfokus)</option>
+                  <option value="gpt-128k">GPT 128K (Standar Lengkap)</option>
+                  <option value="compact-8k">Compact 8K (Cepat &amp; Hemat RAM Mobile)</option>
+                </select>
+                <p className="text-[10px] text-slate-400 font-mono">
+                  {tokenBudgetPreset === 'gemini-1m' ? 'Jendela 1M: Menampilkan detail arsitektur penuh.' :
+                   tokenBudgetPreset === 'claude-30k' ? 'Jendela 30K: Pangkas ke Tier 0 ringkas + task aktif.' :
+                   tokenBudgetPreset === 'gpt-128k' ? 'Jendela 128K: Standar penuh seimbang.' :
+                   'Jendela 8K: Super ringkas untuk handoff cepat di tablet.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Mode & Custom Instructions */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-mono font-semibold text-slate-300">
+                  4. Instruksi Tambahan (Opsional):
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono text-slate-400">Mode:</span>
+                  <button
+                    onClick={() => setMode(m => m === 'FULL' ? 'LITE' : 'FULL')}
+                    className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border transition ${
+                      mode === 'FULL' 
+                        ? 'bg-indigo-950 text-indigo-300 border-indigo-700' 
+                        : 'bg-slate-800 text-slate-300 border-slate-700'
+                    }`}
+                  >
+                    {mode}
+                  </button>
+                </div>
+              </div>
+              <textarea
+                value={customInstructions}
+                onChange={e => setCustomInstructions(e.target.value)}
+                placeholder="Misal: 'Prioritaskan kode tanpa dependensi eksternal', 'Gunakan Tailwind 4', dsb."
+                rows={2}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-mono"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column (1 Col): Active Driver & Token Gauge */}
+        <div className="space-y-4">
+          {/* Active Driver Profile */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between border-b border-slate-800 pb-2">
+              <span className="flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5 text-indigo-400" />
+                Aktor Tablet Aktif (Driver)
+              </span>
+              <span className="text-[10px] font-mono text-emerald-400">Provenance Valid</span>
+            </h3>
+
+            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-full bg-gradient-to-tr ${activeMember.avatarColor} flex items-center justify-center font-bold text-white shadow-md ring-2 ring-white/10 shrink-0 text-sm`}>
+                {activeMember.name.slice(0, 2)}
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs sm:text-sm font-bold text-white truncate">{activeMember.name}</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded font-mono bg-indigo-500/20 text-indigo-300 shrink-0">
+                    Driver
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-400 truncate">{activeMember.role}</div>
+                <div className="text-[10px] text-cyan-300 font-mono truncate">{activeMember.email}</div>
+              </div>
+            </div>
+
+            {/* Quick Switcher of 8 Relay Members */}
+            <div className="space-y-1">
+              <span className="text-[10px] font-mono text-slate-400 block">Ganti Driver Estafet (1-Ketukan):</span>
+              <div className="grid grid-cols-4 gap-1.5">
+                {TEAM_MEMBERS.map(m => (
+                  <button
+                    key={m.id}
+                    onClick={() => handleMemberChange(m.id)}
+                    className={`touch-target-44 p-1.5 rounded-lg border text-center transition flex flex-col items-center justify-center ${
+                      activeMemberId === m.id
+                        ? 'bg-cyan-950/70 border-cyan-500 text-white ring-1 ring-cyan-500/40'
+                        : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                    title={`${m.name} (${m.role})`}
+                  >
+                    <span className="text-[11px] font-bold">{m.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Context Pack Metrics Card */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl space-y-3 font-mono text-xs">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between border-b border-slate-800 pb-2">
+              <span className="flex items-center gap-1.5">
+                <Cpu className="w-3.5 h-3.5 text-amber-400" />
+                Metrik Paket Konteks
+              </span>
+              <span className="text-emerald-400 font-bold">100% Deterministic</span>
+            </h3>
+
+            <div className="space-y-2 text-slate-300">
+              <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
+                <span className="text-slate-400">Estimasi Token:</span>
+                <span className="text-cyan-300 font-bold">~{contextPackOutput.metadata.estimatedTokens.toLocaleString()} token</span>
+              </div>
+              <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
+                <span className="text-slate-400">Karakter Teks:</span>
+                <span className="text-slate-200">{contextPackOutput.metadata.characterCount.toLocaleString()} chars</span>
+              </div>
+              <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
+                <span className="text-slate-400">Cabang Git Terikat:</span>
+                <span className="text-emerald-400 font-bold truncate max-w-[150px]">{contextPackOutput.metadata.gitBranch}</span>
+              </div>
+              <div className="flex items-center justify-between py-1">
+                <span className="text-slate-400">Target Sentuh Tablet:</span>
+                <span className="text-slate-200">min 44px+ OK</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Live Context Pack Preview Card */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3 sm:pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shrink-0">
+              <FileText className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                <span>Pratinjau Output Context Pack</span>
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800/60">
+                  {selectedTaskId}
+                </span>
+              </h3>
+              <p className="text-[11px] sm:text-xs text-slate-400">
+                Format Markdown deterministik siap ditempel ke AI Assistant
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            {/* View Mode Switcher */}
+            <div className="bg-slate-950 p-1 rounded-lg border border-slate-800 flex items-center gap-1 text-xs font-mono">
+              <button
+                onClick={() => setActiveTabMode('preview')}
+                className={`px-2.5 py-1 rounded transition ${
+                  activeTabMode === 'preview' ? 'bg-cyan-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Tampilan Rapi
+              </button>
+              <button
+                onClick={() => setActiveTabMode('raw')}
+                className={`px-2.5 py-1 rounded transition ${
+                  activeTabMode === 'raw' ? 'bg-cyan-600 text-white font-bold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Raw MD
+              </button>
+            </div>
+
+            <button
+              onClick={handleCopy}
+              className="touch-target-44 min-h-[44px] flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono bg-cyan-600 hover:bg-cyan-500 text-white transition active:scale-95 shadow"
+            >
+              {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{isCopied ? 'Tersalin' : 'Salin'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Text Container */}
+        {activeTabMode === 'raw' ? (
+          <textarea
+            readOnly
+            value={contextPackOutput.markdown}
+            rows={18}
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 font-mono text-xs text-cyan-300/90 leading-relaxed focus:outline-none select-all"
+          />
+        ) : (
+          <div className="bg-slate-950 p-4 sm:p-5 rounded-xl border border-slate-800 max-h-[500px] overflow-y-auto space-y-4 text-xs font-mono text-slate-300 leading-relaxed scrollbar-thin">
+            <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-slate-200">
+              {contextPackOutput.markdown}
+            </pre>
+          </div>
+        )}
+
+        {/* Bottom Relay Instructions Card */}
+        <div className="bg-gradient-to-r from-slate-950 via-slate-950 to-indigo-950/40 p-3.5 sm:p-4 rounded-xl border border-indigo-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-start gap-2.5">
+            <Info className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold text-white block">Alur Kerja Estafet Tablet (Blueprint 14):</span>
+              <p className="text-slate-400 text-[11px] mt-0.5">
+                1. Salin Context Pack → 2. Tempel di peramban AI (Claude/Gemini) → 3. Eksekusi kode di Termux → 4. Verifikasi (<code className="text-cyan-300">npm run build</code>) → 5. Commit &amp; serahkan tablet ke anggota berikutnya.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            {onNavigateTab && (
+              <button
+                onClick={() => onNavigateTab('prompt-engine')}
+                className="touch-target-44 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono flex items-center gap-1.5 transition"
+              >
+                <span>Buka Zero-Loss Engine</span>
+                <ArrowRight className="w-3.5 h-3.5 text-cyan-400" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
