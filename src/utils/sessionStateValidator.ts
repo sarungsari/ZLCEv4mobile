@@ -95,11 +95,25 @@ export function validateSessionStateIntegrity(content: string): IntegrityCheckRe
     }
   }
 
+  // Helper to extract a section's text by number accurately
+  const getSectionText = (num: number): string => {
+    const secHeaderRegex = new RegExp(`^##\\s+${num}\\..*?$`, 'm');
+    const match = content.match(secHeaderRegex);
+    if (!match || match.index === undefined) return '';
+
+    const startIdx = match.index;
+    const nextSecMatch = content.slice(startIdx + match[0].length).match(/^##\s+\d+\..*?$/m);
+    const endIdx = nextSecMatch && nextSecMatch.index !== undefined
+      ? startIdx + match[0].length + nextSecMatch.index
+      : content.length;
+
+    return content.slice(startIdx, endIdx);
+  };
+
   // 2. Periksa Format Header Matriks Task (Bagian 2)
   let hasMatrixHeaderValid = false;
-  const sec2Match = content.match(/^##\s+2\..*?(?=^##\s+\d+\.|\Z)/ms);
-  if (sec2Match) {
-    const sec2Text = sec2Match[0];
+  const sec2Text = getSectionText(2);
+  if (sec2Text) {
     const headerLineMatch = sec2Text.match(/\|\s*ID\s*Task\s*\|\s*Nama\s*\|\s*Dependensi\s*\|\s*Status\s*\|\s*Bukti\s*Verifikasi\s*\|\s*Disetujui\s*\|/i);
     if (headerLineMatch) {
       hasMatrixHeaderValid = true;
@@ -117,10 +131,9 @@ export function validateSessionStateIntegrity(content: string): IntegrityCheckRe
   // 3. Periksa 7 Butir Kanonik WAL (Bagian 3)
   const foundWalItems: string[] = [];
   const missingWalItems: string[] = [];
-  const sec3Match = content.match(/^##\s+3\..*?(?=^##\s+\d+\.|\Z)/ms);
+  const sec3Text = getSectionText(3);
 
-  if (sec3Match) {
-    const sec3Text = sec3Match[0];
+  if (sec3Text) {
     for (const item of CANONICAL_WAL_ITEMS) {
       const itemRegex = new RegExp(`\\*\\*${item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:\\*\\*`, 'i');
       if (itemRegex.test(sec3Text)) {
@@ -177,18 +190,23 @@ export function repairSessionStateCanonicalStructure(content: string): string {
   }
 
   // Pastikan 7 butir kanonik WAL tertera lengkap di Bagian 3
-  if (/^##\s+3\. WORK IN PROGRESS \(WAL\)/m.test(text)) {
-    const sec3 = text.match(/^##\s+3\. WORK IN PROGRESS \(WAL\).*?(?=^##\s+\d+\.|\Z)/ms)?.[0];
-    if (sec3) {
-      let updatedSec3 = sec3;
-      for (const item of CANONICAL_WAL_ITEMS) {
-        const itemRegex = new RegExp(`\\*\\*${item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:\\*\\*`, 'i');
-        if (!itemRegex.test(updatedSec3)) {
-          updatedSec3 += `\n* **${item}:** -`;
-        }
+  const sec3Match = text.match(/^##\s+3\..*?$/m);
+  if (sec3Match && sec3Match.index !== undefined) {
+    const startIdx = sec3Match.index;
+    const nextMatch = text.slice(startIdx + sec3Match[0].length).match(/^##\s+\d+\..*?$/m);
+    const endIdx = nextMatch && nextMatch.index !== undefined
+      ? startIdx + sec3Match[0].length + nextMatch.index
+      : text.length;
+    const sec3 = text.slice(startIdx, endIdx);
+
+    let updatedSec3 = sec3;
+    for (const item of CANONICAL_WAL_ITEMS) {
+      const itemRegex = new RegExp(`\\*\\*${item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:\\*\\*`, 'i');
+      if (!itemRegex.test(updatedSec3)) {
+        updatedSec3 = updatedSec3.trimEnd() + `\n* **${item}:** -`;
       }
-      text = text.replace(sec3, updatedSec3);
     }
+    text = text.slice(0, startIdx) + updatedSec3 + '\n\n' + text.slice(endIdx).trimStart();
   }
 
   return text;

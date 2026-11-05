@@ -23,7 +23,9 @@ export type TokenBudgetPreset =
   | 'gemini-1m'      // Comprehensive (1M+ tokens window)
   | 'claude-30k'     // High-precision compact (8K-30K budget)
   | 'gpt-128k'       // Standard full (128K window)
-  | 'compact-8k';    // Ultra-lightweight for slow mobile / quick handovers
+  | 'deepseek-64k'   // DeepSeek V3/R1 with Reasoning Buffer (64K window)
+  | 'compact-8k'     // Ultra-lightweight for slow mobile / quick handovers
+  | 'freebuff-4k';   // Free Tier Buffer Mode (Ultra-lean 4K for strict limits)
 
 export interface ContextPackGeneratorOptions {
   task: ZLCETask;

@@ -17,15 +17,33 @@ import {
   ShieldCheck,
   Zap
 } from 'lucide-react';
-import { ZeroLossChecklist } from '../types/zlce';
+import { ZeroLossChecklist, ParsedSessionState } from '../types/zlce';
+import { INITIAL_SESSION_STATE_MD } from '../data/templates';
+import { parseSessionStateMarkdown } from '../utils/markdownParser';
 import { copyText } from '../utils/clipboard';
-
+import { PromptStudio } from './mobile/PromptStudio';
 
 export interface PromptEngineTabProps {
   onNavigateTab?: (tab: any) => void;
+  sessionState?: ParsedSessionState;
 }
 
-export const PromptEngineTab: React.FC<PromptEngineTabProps> = ({ onNavigateTab }) => {
+export const PromptEngineTab: React.FC<PromptEngineTabProps> = ({ onNavigateTab, sessionState }) => {
+  // Mode switcher: 'studio' (Multi-Model Prompt Studio) or 'builder' (Directive Builder & Linter)
+  const [viewMode, setViewMode] = useState<'studio' | 'builder'>('studio');
+
+  // Resolve sessionState fallback
+  const resolvedState = useMemo<ParsedSessionState>(() => {
+    if (sessionState) return sessionState;
+    try {
+      const saved = localStorage.getItem('zlce_session_raw_markdown');
+      if (saved) return parseSessionStateMarkdown(saved);
+    } catch {
+      // silent
+    }
+    return parseSessionStateMarkdown(INITIAL_SESSION_STATE_MD);
+  }, [sessionState]);
+
   // Builder state
   const [formatType, setFormatType] = useState<'json' | 'key-value' | 'csv'>('json');
   const [outputSchema, setOutputSchema] = useState(`{
@@ -238,13 +256,46 @@ timestamp_audit: [YYYY-MM-DD jam: ?]`);
 
   return (
     <div className="space-y-6">
-      {/* Top Banner */}
-      <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <Target className="w-5 h-5 text-cyan-400" />
-            Zero-Loss Prompt Studio &amp; Deterministic Output Parser
-          </h2>
+      {/* View Mode Switcher: Prompt Studio Multi-Model vs Directive Builder */}
+      <div className="bg-slate-900/90 border border-slate-800 p-1.5 rounded-2xl flex items-center gap-2 max-w-lg shadow-sm">
+        <button
+          type="button"
+          onClick={() => setViewMode('studio')}
+          className={`flex-1 min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+            viewMode === 'studio'
+              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <Sparkles className="w-4 h-4" />
+          <span>Prompt Studio Multi-Model</span>
+          <span className="px-1.5 py-0.2 rounded text-[10px] bg-indigo-500/30 text-indigo-200 font-mono">P3-03</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setViewMode('builder')}
+          className={`flex-1 min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+            viewMode === 'builder'
+              ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/30'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <Code2 className="w-4 h-4" />
+          <span>Directive Builder</span>
+        </button>
+      </div>
+
+      {viewMode === 'studio' ? (
+        <PromptStudio sessionState={resolvedState} onNavigateTab={onNavigateTab} />
+      ) : (
+        <div className="space-y-6">
+          {/* Top Banner */}
+          <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Target className="w-5 h-5 text-cyan-400" />
+                Zero-Loss Prompt Studio &amp; Deterministic Output Parser
+              </h2>
           <p className="text-xs text-slate-400 mt-1">
             Implementasi prinsip Zero-Loss Context Engineering: pemetaan 1-ke-1, skema mendahului data, aturan edge-case eksplisit, stop token, dan verifikasi deterministik tanpa post-processing.
           </p>
@@ -567,5 +618,7 @@ timestamp_audit: [YYYY-MM-DD jam: ?]`);
         </div>
       </div>
     </div>
-  );
+    )}
+  </div>
+);
 };

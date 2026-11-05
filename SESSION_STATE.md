@@ -17,12 +17,12 @@ Format dibaca skrip `scripts/zlce-check.py`; jangan ubah nama field, kolom, atau
 
 ## 1. STATUS AKTIF
 
-* **Timestamp Audit:** 2026-11-04 16:35:00 WIB
+* **Timestamp Audit:** 2026-11-04 20:30:00 WIB
 * **Cabang Git:** `v4-mobile`
-* **Task Terakhir DONE:** `TASK-012` (Cache Draft LocalStorage dengan Debounce 400ms & Auto-Sync)
+* **Task Terakhir DONE:** `TASK-015` (Prompt Generator Multi-Model Terstruktur)
 * **Task Aktif:** `-`
 * **Status Task Aktif:** READY
-* **Task Berikutnya:** `TASK-013`
+* **Task Berikutnya:** `TASK-016`
 
 ---
 
@@ -43,9 +43,9 @@ Format dibaca skrip `scripts/zlce-check.py`; jangan ubah nama field, kolom, atau
 | `TASK-011` | Penegakan Integritas SESSION_STATE sebagai Single Source of Truth | TASK-010 | DONE | sessionStateValidator.ts, zlce-check parity, canonical 8 sec + table header + WAL 7 items ok | ya |
 | `TASK-012` | Cache Draft LocalStorage dengan Debounce 400ms & Auto-Sync | TASK-011 | DONE | useAutoDraftCache hook (400ms debounce), transparent recovery, visual status, Android LMK flush ok | ya |
 | `TASK-013` | Portable Context Pack Generator (Schema-before-Data) | TASK-012 | DONE | contextPackGenerator.ts, ContextPackTab.tsx, 5 invariants, TC-P3-01 pass | ya |
-| `TASK-014` | Context Budget Manager & Adapter Kuota Token per Model AI | TASK-013 | READY | - | - |
-| `TASK-015` | Prompt Generator Multi-Model Terstruktur | TASK-014 | PENDING | - | - |
-| `TASK-016` | Result Capture Module dengan Injeksi Provenance Otomatis | TASK-015 | PENDING | - | - |
+| `TASK-014` | Context Budget Manager & Adapter Kuota Token per Model AI | TASK-013 | DONE | TC-P3-02 pass: tokenBudgetAdapter.ts, TokenBudgetSelector.tsx, tests 6/6 pass, State Health 0 error | ya |
+| `TASK-015` | Prompt Generator Multi-Model Terstruktur | TASK-014 | DONE | TC-P3-03 pass, promptGenerator.ts & PromptStudio.tsx integrated, 1-tap copy & stop tokens ok | ya |
+| `TASK-016` | Result Capture Module dengan Injeksi Provenance Otomatis | TASK-015 | READY | - | - |
 | `TASK-017` | Handover Manager Lintas AI & Deteksi Konflik Keputusan | TASK-016 | PENDING | - | - |
 | `TASK-018` | Test Suite Uji Cold-Start Lintas AI (Claude -> Gemini) | TASK-017 | PENDING | - | - |
 | `TASK-019` | Team Member Registry (8 Profil Alias Non-Kredensial) | TASK-018 | PENDING | - | - |
@@ -79,12 +79,12 @@ Format dibaca skrip `scripts/zlce-check.py`; jangan ubah nama field, kolom, atau
 ## 3. WORK IN PROGRESS (WAL)
 
 * **Task:** `-`
-* **Langkah Sedang Dikerjakan:** TASK-013 selesai diverifikasi, siap lanjut TASK-014
-* **Berkas Direncanakan/Disentuh:** src/utils/contextPackGenerator.ts, src/components/mobile/ContextPackTab.tsx, src/components/mobile/index.ts, src/components/PromptEngineTab.tsx, src/components/Header.tsx, src/App.tsx, SESSION_STATE.md
-* **Sudah Dilakukan:** TASK-001 s/d TASK-013 tuntas (Generator Portable Context Pack terstruktur sesuai Blueprint 14, 5 Invarian I1-I5, tab navigasi khusus Context Pack, integrasi PromptEngine & Dashboard, preset token budget Multi-AI aktif, TC-P3-01 pass)
-* **Langkah Berikutnya (persis):** TASK-014 Context Budget Manager & Adapter Kuota Token per Model AI
-* **Perintah Verifikasi:** npm run build && python3 scripts/zlce-check.py .
-* **Diperbarui:** 2026-11-04 18:08:00 WIB
+* **Langkah Sedang Dikerjakan:** TASK-015 tuntas, siap lanjut TASK-016 Result Capture Module dengan Injeksi Provenance Otomatis
+* **Berkas Direncanakan/Disentuh:** src/utils/promptGenerator.ts, src/components/mobile/PromptStudio.tsx, src/components/PromptEngineTab.tsx, src/components/mobile/index.ts, scripts/run-tests.py, SESSION_STATE.md
+* **Sudah Dilakukan:** Mengimplementasikan modul generator prompt multi-model src/utils/promptGenerator.ts untuk 4 arketipe (task-execution, landing, review, handover) dengan penegakan ketat Schema-before-Data, larangan keras kode placeholder (NO // ... rest of code), touch target minimal 44x44px, dan stop tokens per model provider (Claude, Gemini, ChatGPT, DeepSeek, Qwen). Membangun antarmuka tablet PromptStudio.tsx dengan 1-ketukan salin, unduh .md, dan integrasi browser AI. Suite uji TC-P3-03 pada scripts/run-tests.py lulus 7/7 checks OK.
+* **Langkah Berikutnya (persis):** TASK-016 Result Capture Module dengan Injeksi Provenance Otomatis
+* **Perintah Verifikasi:** npm run build && python3 scripts/zlce-check.py . && python3 scripts/run-tests.py
+* **Diperbarui:** 2026-11-04 20:30:00 WIB
 
 ---
 
@@ -111,12 +111,18 @@ Format dibaca skrip `scripts/zlce-check.py`; jangan ubah nama field, kolom, atau
 * 2026-11-04: Registri Resmi 8 Anggota Tim Estafet dikonfigurasi: eko, oned, cxperia, sulistiyani, layang, acimau, kepek, gete.
 * 2026-11-04: FASE 1 (TASK-003 s/d TASK-007) tuntas 100%.
 * 2026-11-04: FASE 2 (TASK-008 s/d TASK-012) tuntas 100%: Workspace Reader, Editor, Exporter, Integritas Kanonik, dan Auto-Draft Cache 400ms aktif.
-* 2026-11-04: TASK-013 Selesai (Portable Context Pack Generator aktif, Invarian I1-I5 terpenuhi). Status TASK-014 beralih ke READY.
+* 2026-11-04: TASK-013, TASK-014, dan TASK-015 Selesai (Prompt Generator Multi-Model Terstruktur aktif dengan 4 arketipe, penegakan anti-placeholder & skema di awal). Status TASK-016 beralih ke READY.
+* 2026-11-04: Suite uji otomatis meloloskan 7/7 checks (TC-P3-01 s/d TC-P3-03 pass).
+* 2026-11-04: Paket serah terima Claude & ChatGPT (20 berkas, 82 KB zip) serta prompt mandat siap pakai.
 
 ---
 
 ## 7. LOG AUDIT (terbaru di atas; arsipkan entri lama ke `docs/archive/`)
 
+* **2026-11-04 20:30 WIB:** TASK-015 Selesai & Disetujui: Membangun modul generator prompt multi-model terstruktur src/utils/promptGenerator.ts dan antarmuka tablet PromptStudio.tsx sesuai spesifikasi Blueprint 14 (Multi-AI Team Model). Mengintegrasikan Context Pack dengan instruksi peran presisi untuk 4 arketipe (Task Execution, Landing Initiation, Quality Review, Relay Handover) dengan penegakan ketat aturan Schema-before-Data, larangan keras kode placeholder (NO '// ... existing code ...'), touch target ergonomi tablet minimal 44x44px (min-h-[44px]), serta injeksi stop token spesifik per model (Claude, Gemini, ChatGPT, DeepSeek, Qwen). Menghubungkan PromptStudio ke PromptEngineTab dengan sub-mode switcher, 1-ketukan salin ke clipboard, unduh .md, dan tautan browser AI instan. Suite pengujian TC-P3-03 pada scripts/run-tests.py lulus 7/7 checks OK. Status TASK-016 beralih ke READY.
+* **2026-11-04 20:10 WIB:** Profil DeepSeek & FreeBuff Terintegrasi: Menambahkan profil 'deepseek-64k' (buffer penalaran chain-of-thought) dan 'freebuff-4k' (buffer proteksi akun gratis ultra-lean 4.000 token) ke src/utils/tokenBudgetAdapter.ts, TokenBudgetSelector.tsx, dan ContextPackTab.tsx. Pemangkasan cerdas untuk FreeBuff disesuaikan (menyimpan 2 log audit dan 2 poin serah terima) agar terhindar dari rate limit akun gratis. Suite pengujian TC-P3-02 pada scripts/run-tests.py lulus 6/6 checks. Status TASK-015 beralih ke READY.
+* **2026-11-04 19:50 WIB:** TASK-014 Selesai & Disetujui & State Health 3 Error Diperbaiki: Memperbaiki 3 error palsu linter State Health pada src/utils/sessionStateValidator.ts dengan mengganti regex lookahead yang memakai pola tidak valid menjadi fungsi ekstraksi jangkauan seksi aman getSectionText. Mengimplementasikan modul adapter budget token src/utils/tokenBudgetAdapter.ts dengan 4 profil AI (Gemini 1M, Claude 30K, GPT 128K, Compact 8K), kalkulasi keamanan token (calculateTokenSafety), dan pemangkasan cerdas lampiran historis berlebih (pruneContextForBudget). Membangun antarmuka TokenBudgetSelector.tsx dan mengintegrasikannya ke ContextPackTab.tsx serta TokenUsageGauge.tsx. Suite uji TC-P3-02 pada scripts/run-tests.py lulus 100% (6/6 checks OK). Status TASK-015 beralih ke READY.
+* **2026-11-04 18:45 WIB:** Paket Handover Claude & ChatGPT Disiapkan: Membangun bundel berkas ZIP mandiri 20 berkas (public/assets/zlce-claude-chatgpt-bundle.zip, 80.3 KB), dokumen panduan serah terima lengkap CLAUDE_CHATGPT_HANDOVER.md, kartu aksi cepat di ContextPackTab.tsx, dan sub-tampilan interaktif Estafet AI di TutorialTab.tsx. Dilengkapi 5 langkah eksekusi praktis, prompt mandat TASK-014 siap salin bebas placeholder, serta alur verifikasi POSIX/Termux. Status TASK-014 tetap READY siap dieksekusi.
 * **2026-11-04 18:08 WIB:** TASK-013 Selesai & Disetujui: Membangun modul generator paket konteks portabel src/utils/contextPackGenerator.ts dan antarmuka ContextPackTab.tsx sesuai Blueprint 14 (Multi-AI Team Model). Menegakkan Invarian I1 (All in Files) dan I2 (Cold-Start Resume) dengan metadata lengkap (Proyek, Task ID, Cabang task/TASK-xxx, Driver Tablet aktif, AI Target, Timestamp ISO, Stop Token). Menyediakan selektor 43 task, 6 engine AI (Gemini, Claude, GPT, DeepSeek, Qwen, Universal), 4 preset token budget (gemini-1m, claude-30k, gpt-128k, compact-8k), 1-ketukan salin, unduh berkas .md (LF Unix murni), estimasi token live, dan integrasi mulus ke PromptEngineTab dan Dashboard. Uji TC-P3-01 lulus 100%. Status TASK-014 beralih ke READY.
 * **2026-11-04 16:35 WIB:** TASK-012 Selesai & Disetujui: Membangun custom hook src/hooks/useAutoDraftCache.ts dan mengintegrasikannya ke WorkspaceEditor.tsx. Mengimplementasikan auto-cache LocalStorage dengan debounce 400ms kanonik, pemulihan draft transparan saat aplikasi dibuka kembali (Acceptance Criteria 2), proteksi Android Low Memory Killer (LMK) via lifecycle listener (visibilitychange & pagehide flush), cross-tab sync via storage event, serta indikator visual ringkas 'Draft tersimpan' (Acceptance Criteria 3) dengan status live dan tombol simpan instan. FASE 2 tuntas 100%. Status TASK-013 (Portable Context Pack Generator) beralih ke READY.
 * **2026-11-04 16:15 WIB:** TASK-011 Selesai & Disetujui: Membangun modul src/utils/sessionStateValidator.ts yang menegakkan kepatuhan 100% terhadap aturan kanonik ZLCE Core dan aturan runner scripts/zlce-check.py: keberadaan lengkap 8 bagian (0 s.d. 7), susunan header tabel matriks task (| ID Task | Nama | Dependensi | Status | Bukti Verifikasi | Disetujui |), serta 7 butir kanonik WAL pada Bagian 3. Dilengkapi utilitas pemulihan otomatis repairSessionStateCanonicalStructure dan integrasi visual linter di SessionStateTab dan App.tsx. Status TASK-012 beralih ke READY.

@@ -29,12 +29,13 @@ import {
   Flame,
   Shield,
   HelpCircle,
-  Clock
+  Clock,
+  Zap
 } from 'lucide-react';
 import { copyText } from '../utils/clipboard';
 import { CANONICAL_USAGE_GUIDE_MD } from '../data/templates';
 
-type ViewMode = 'canonical-usage' | 'interactive-scenarios' | 'prompt-catalog';
+type ViewMode = 'canonical-usage' | 'interactive-scenarios' | 'prompt-catalog' | 'ai-handover-claude-gpt';
 type ScenarioType = 'new-project' | 'existing-project' | 'in-progress';
 
 export const TutorialTab: React.FC = () => {
@@ -102,7 +103,7 @@ export const TutorialTab: React.FC = () => {
         </div>
 
         {/* Top-Level Mode Selector */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-6 border-t border-slate-700/60">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-6 pt-6 border-t border-slate-700/60">
           <button
             onClick={() => setViewMode('canonical-usage')}
             className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
@@ -134,7 +135,7 @@ export const TutorialTab: React.FC = () => {
             </div>
             <div>
               <div className="text-xs font-semibold uppercase tracking-wider text-cyan-400">Tutorial Interaktif</div>
-              <div className="text-sm font-bold text-slate-100">3 Skenario Siklus Proyek</div>
+              <div className="text-sm font-bold text-slate-100">3 Skenario Siklus</div>
               <div className="text-xs text-slate-400">Mulai Baru, Audit, &amp; Takeover</div>
             </div>
           </button>
@@ -154,6 +155,24 @@ export const TutorialTab: React.FC = () => {
               <div className="text-xs font-semibold uppercase tracking-wider text-indigo-400">Katalog Prompt</div>
               <div className="text-sm font-bold text-slate-100">Prompt Siap Salin</div>
               <div className="text-xs text-slate-400">Landing, Handover, Audit, CLI</div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => setViewMode('ai-handover-claude-gpt')}
+            className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+              viewMode === 'ai-handover-claude-gpt'
+                ? 'bg-amber-950/50 border-amber-500/80 text-white shadow-lg shadow-amber-900/20 ring-1 ring-amber-500/30'
+                : 'bg-slate-900/70 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <div className={`p-2 rounded-lg ${viewMode === 'ai-handover-claude-gpt' ? 'bg-amber-500/20 text-amber-300' : 'bg-slate-800 text-slate-400'}`}>
+              <Cpu className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-amber-400">Estafet AI Baru</div>
+              <div className="text-sm font-bold text-slate-100">Claude &amp; ChatGPT</div>
+              <div className="text-xs text-slate-400">Tutorial Step &amp; Bundle ZIP</div>
             </div>
           </button>
         </div>
@@ -881,6 +900,238 @@ export const TutorialTab: React.FC = () => {
         </div>
       )}
 
+      {/* VIEW 4: ESTAFET AI KE CLAUDE / CHATGPT & BUNDLE ZIP */}
+      {viewMode === 'ai-handover-claude-gpt' && (
+        <div className="space-y-6 animate-fadeIn">
+          {/* Hero Banner */}
+          <div className="bg-gradient-to-r from-amber-950/40 via-purple-950/30 to-indigo-950/50 border border-amber-500/40 rounded-2xl p-6 shadow-xl space-y-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-amber-500/20 text-amber-300 rounded-lg border border-amber-500/30">
+                    <Zap className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider">
+                    Blueprint 14: Multi-AI Relay Handover
+                  </span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+                  Estafet Pengerjaan Task di Claude atau ChatGPT
+                </h3>
+                <p className="text-sm text-slate-300 max-w-3xl leading-relaxed">
+                  Beralih pengerjaan ke <strong className="text-amber-300">Anthropic Claude (Claude 3.5 Sonnet)</strong> atau <strong className="text-indigo-300">ChatGPT (GPT-4o)</strong> tanpa kehilangan satu bit konteks pun. Seluruh dokumen status, backlog task, dan aturan ZLCE telah dibundel secara otomatis ke dalam berkas ZIP siap unggah.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row lg:flex-col gap-2 shrink-0">
+                <a
+                  href="/assets/zlce-claude-chatgpt-bundle.zip"
+                  download="zlce-claude-chatgpt-bundle.zip"
+                  className="touch-target-44 min-h-[44px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-mono font-bold bg-amber-600 hover:bg-amber-500 text-white shadow-lg shadow-amber-900/30 active:scale-95 transition"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Unduh Bundle ZIP (80 KB)</span>
+                </a>
+
+                <button
+                  onClick={() => copyToClipboard(CLAUDE_CHATGPT_TASK014_PROMPT, 'prompt-task014')}
+                  className="touch-target-44 min-h-[44px] flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-semibold bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 active:scale-95 transition"
+                >
+                  {copiedId === 'prompt-task014' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-amber-400" />}
+                  <span>{copiedId === 'prompt-task014' ? 'Prompt Tersalin!' : 'Salin Prompt TASK-014'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Status Bar */}
+            <div className="pt-3 border-t border-slate-800 flex flex-wrap items-center gap-2 text-xs font-mono">
+              <span className="text-slate-400">Target Task Berikutnya:</span>
+              <span className="px-2.5 py-0.5 rounded bg-amber-950/70 border border-amber-800/60 text-amber-300 font-bold">
+                TASK-014 (Context Budget Manager &amp; Token Quota Adapter)
+              </span>
+              <span className="text-slate-500">|</span>
+              <span className="text-emerald-400">Status: READY</span>
+              <span className="text-slate-500">|</span>
+              <span className="text-cyan-300">Dependensi: TASK-013 (DONE)</span>
+            </div>
+          </div>
+
+          {/* 5-Step Tutorial Cards */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+              <GraduationCap className="w-4 h-4 text-cyan-400" />
+              5 Langkah Singkat Eksekusi di Claude / ChatGPT:
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Step 1 */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2 relative overflow-hidden">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/40">
+                    Langkah 1
+                  </span>
+                  <Download className="w-4 h-4 text-slate-500" />
+                </div>
+                <h5 className="text-sm font-bold text-white">Unduh Bundle Berkas (.zip)</h5>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Klik tombol <strong>Unduh Bundle ZIP</strong> di atas. Anda akan mendapatkan berkas <code className="text-amber-300">zlce-claude-chatgpt-bundle.zip</code> berisi 20 berkas status &amp; spesifikasi lengkap.
+                </p>
+              </div>
+
+              {/* Step 2 */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2 relative overflow-hidden">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/40">
+                    Langkah 2
+                  </span>
+                  <ExternalLink className="w-4 h-4 text-slate-500" />
+                </div>
+                <h5 className="text-sm font-bold text-white">Buka Claude atau ChatGPT</h5>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Buka peramban di tablet: <strong>claude.ai</strong> (Claude 3.5 Sonnet) atau <strong>chatgpt.com</strong> (GPT-4o). Buka percakapan baru untuk memastikan cold-start bersih.
+                </p>
+              </div>
+
+              {/* Step 3 */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2 relative overflow-hidden">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold text-indigo-400 bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-800/40">
+                    Langkah 3
+                  </span>
+                  <FileCode2 className="w-4 h-4 text-slate-500" />
+                </div>
+                <h5 className="text-sm font-bold text-white">Lampirkan / Unggah Berkas</h5>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Unggah berkas ZIP langsung ke chat Claude/ChatGPT. Model AI akan mengekstrak <code className="text-indigo-300">SESSION_STATE.md</code>, <code className="text-indigo-300">TASKS.md</code>, dan petunjuk handover.
+                </p>
+              </div>
+
+              {/* Step 4 */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2 relative overflow-hidden">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/40">
+                    Langkah 4
+                  </span>
+                  <Copy className="w-4 h-4 text-slate-500" />
+                </div>
+                <h5 className="text-sm font-bold text-white">Salin &amp; Tempel Prompt TASK-014</h5>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Tempelkan prompt eksekusi yang telah disiapkan di bawah. Prompt ini secara eksplisit melarang placeholder kode dan menegakkan aturan Schema-before-Data.
+                </p>
+              </div>
+
+              {/* Step 5 */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2 relative overflow-hidden">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono font-bold text-purple-400 bg-purple-950/60 px-2 py-0.5 rounded border border-purple-800/40">
+                    Langkah 5
+                  </span>
+                  <Terminal className="w-4 h-4 text-slate-500" />
+                </div>
+                <h5 className="text-sm font-bold text-white">Verifikasi di Termux &amp; Update WAL</h5>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Masukkan kode ke berkas proyek, jalankan <code className="text-cyan-300">npm run build && python3 scripts/zlce-check.py .</code>, lalu perbarui status <code className="text-purple-300">SESSION_STATE.md</code>.
+                </p>
+              </div>
+
+              {/* Invariant Note Card */}
+              <div className="bg-gradient-to-br from-slate-900 to-emerald-950/30 border border-emerald-800/40 rounded-xl p-4 space-y-2">
+                <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-xs">
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Garansi Zero-Loss Invariance</span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  Karena AI membaca state murni dari berkas Markdown (Invarian I1), Anda dapat berpindah dari Gemini ke Claude atau sebaliknya kapan saja tanpa resiko inkonsistensi arsitektur.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Prompt Ready-To-Copy Box */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div>
+                <span className="text-xs font-mono font-bold text-amber-400 uppercase">Prompt Mandat Siap Pakai</span>
+                <h4 className="text-sm sm:text-base font-bold text-white">Prompt Eksekusi TASK-014 untuk Claude / ChatGPT</h4>
+              </div>
+              <button
+                onClick={() => copyToClipboard(CLAUDE_CHATGPT_TASK014_PROMPT, 'prompt-task014-full')}
+                className="touch-target-44 min-h-[44px] flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-mono font-bold bg-amber-600 hover:bg-amber-500 text-white shadow active:scale-95 transition"
+              >
+                {copiedId === 'prompt-task014-full' ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
+                <span>{copiedId === 'prompt-task014-full' ? 'Prompt Tersalin!' : 'Salin Seluruh Prompt'}</span>
+              </button>
+            </div>
+
+            <pre className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs font-mono text-slate-200 overflow-x-auto max-h-72 leading-relaxed whitespace-pre-wrap select-all">
+{CLAUDE_CHATGPT_TASK014_PROMPT}
+            </pre>
+          </div>
+
+          {/* Table of Included Files in Bundle */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <Layers className="w-4 h-4 text-cyan-400" />
+                <span>Rincian 20 Berkas dalam Paket Bundle ZIP (80 KB)</span>
+              </h4>
+              <span className="text-xs font-mono text-emerald-400 bg-emerald-950/60 px-2.5 py-0.5 rounded border border-emerald-800/40">
+                Lengkap &amp; Siap Upload
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-mono">
+              <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1.5">
+                <div className="font-bold text-amber-400 flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5" /> Handover &amp; Prompt
+                </div>
+                <ul className="text-slate-300 space-y-1 text-[11px]">
+                  <li>• CLAUDE_CHATGPT_HANDOVER.md</li>
+                  <li>• HANDOVER_PROMPT.md</li>
+                  <li>• LANDING_PROMPT.md</li>
+                  <li>• ZLCE_KIT_SINGLE.md</li>
+                </ul>
+              </div>
+
+              <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1.5">
+                <div className="font-bold text-cyan-400 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Status &amp; Tasks
+                </div>
+                <ul className="text-slate-300 space-y-1 text-[11px]">
+                  <li>• SESSION_STATE.md (State of truth)</li>
+                  <li>• TASKS.md (43 Backlog Tasks)</li>
+                  <li>• docs/USAGE.md (Kanonik)</li>
+                </ul>
+              </div>
+
+              <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1.5">
+                <div className="font-bold text-indigo-400 flex items-center gap-1.5">
+                  <Cpu className="w-3.5 h-3.5" /> Blueprint Arsitektur
+                </div>
+                <ul className="text-slate-300 space-y-1 text-[11px]">
+                  <li>• MOBILE_BLUEPRINT.md</li>
+                  <li>• 14_MULTI_AI_TEAM_MODEL.md</li>
+                  <li>• 02_COMPONENT_ARCHITECTURE.md</li>
+                  <li>• 07_WORKFLOW_DESIGN.md</li>
+                </ul>
+              </div>
+
+              <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1.5">
+                <div className="font-bold text-emerald-400 flex items-center gap-1.5">
+                  <FileCode2 className="w-3.5 h-3.5" /> Kode &amp; Linter
+                </div>
+                <ul className="text-slate-300 space-y-1 text-[11px]">
+                  <li>• src/utils/contextPackGenerator.ts</li>
+                  <li>• src/types/zlce.ts &amp; mobile.ts</li>
+                  <li>• scripts/zlce-check.py</li>
+                  <li>• package.json &amp; tsconfig.json</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* AI Tool Recommendation Matrix (Always visible at bottom) */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
@@ -924,6 +1175,45 @@ export const TutorialTab: React.FC = () => {
 };
 
 // Canonical Templates & Constants
+const CLAUDE_CHATGPT_TASK014_PROMPT = `Kamu adalah Senior Frontend & TypeScript Engineer yang bertindak sebagai AI Coding Engine untuk proyek ZLCE Mobile Workbench v4.0.0 (Zero-Loss Context Engineering Studio).
+
+### KONTEKS PROYEK & ATURAN METODOLOGI:
+1. Stack: React 19 + TypeScript + Vite + Tailwind CSS (v4).
+2. Metodologi: Zero-Loss Context Engineering (ZLCE).
+   - Invarian I1 (All in Files): Sumber kebenaran tunggal adalah file Markdown dan kode repositori.
+   - Invarian I2 (Cold-Start Resume): Eksekusi mandiri tanpa asumsi ingatan chat sebelumnya.
+   - Schema-before-Data: Tipe TypeScript murni dan antarmuka harus didefinisikan sebelum implementasi logika.
+3. ATURAN KODE MUTLAK:
+   - Tulis kode LENGKAP tanpa placeholder, tanpa tanda elipsis ("// ... rest of code"), tanpa fungsi mockup kosong.
+   - Gunakan TypeScript murni yang kompatibel dengan React 19 dan Lucide-React.
+   - Sesuai dengan batasan layar tablet Android 8.7" (Samsung Tab A7 Lite): target sentuh minimal 44px (min-h-[44px]).
+
+### MANDAT TUGAS: IMPLEMENTASI TASK-014
+Nama: Context Budget Manager & Adapter Kuota Token per Model AI
+Target File:
+1. \`src/utils/tokenBudgetAdapter.ts\`
+2. \`src/components/mobile/TokenBudgetSelector.tsx\`
+3. Update integrasi pada \`src/components/mobile/ContextPackTab.tsx\` dan \`src/components/TokenUsageGauge.tsx\`.
+
+### SPESIFIKASI DETAIL:
+1. \`src/utils/tokenBudgetAdapter.ts\`:
+   - Definisikan tipe profil model:
+     * \`gemini-1m\` (Limit: 1,000,000 token, Safe Window: 750,000)
+     * \`claude-30k\` (Limit: 30,000 token, Safe Window: 24,000)
+     * \`gpt-128k\` (Limit: 128,000 token, Safe Window: 96,000)
+     * \`compact-8k\` (Limit: 8,000 token, Safe Window: 6,500)
+   - Fungsi \`pruneContextForBudget(markdown: string, budgetPreset: string)\`:
+     * Menghitung estimasi token (~4 karakter per token untuk teks teknis campuran Indonesia/Inggris).
+     * Jika teks melebihi Safe Window, lakukan pemangkasan cerdas: pangkas Bagian 7 (Log Audit Historis lama) menjadi ringkasan 3 entri terakhir, pertahankan utuh Bagian 1 (Mandat Task Aktif), Bagian 2 (Jangkar Kebenaran Tier 0), dan Bagian 3 (WAL).
+   - Fungsi \`calculateTokenSafety(tokenCount: number, budgetPreset: string)\` mengembalikan status: 'safe' (hijau) | 'warning' (kuning) | 'danger' (merah).
+
+2. \`src/components/mobile/TokenBudgetSelector.tsx\`:
+   - Menyediakan pemilih profil model interaktif berbentuk kartu responsif atau segmented control (Gemini 1M, Claude 30K/Sonnet, GPT Compact 8K/128K).
+   - Menampilkan batas kuota, persentase utilisasi terhadap safe window, dan badge status visual.
+   - Target sentuh ergonomis ramah jempol (min 44px).
+
+3. Outputkan kode lengkap untuk berkas-berkas tersebut sekarang.`;
+
 const CHECKPOINT_TEMPLATE = `<!-- ZLCE:CHECKPOINT:START -->
 Task: TASK-001
 Status: IN_PROGRESS

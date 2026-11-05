@@ -1,18 +1,24 @@
 import React, { useState } from 'react';
 import { Cpu, Zap, Info, ChevronUp, ChevronDown, Activity, Sparkles } from 'lucide-react';
+import { TokenBudgetPreset } from '../utils/contextPackGenerator';
+import { MODEL_BUDGET_PROFILES } from '../utils/tokenBudgetAdapter';
 
 interface TokenUsageGaugeProps {
   rawMarkdown: string;
   variant?: 'compact' | 'footer' | 'card';
   maxBudget?: number; // default safe Tier 0 target budget e.g. 4000 tokens
+  preset?: TokenBudgetPreset;
 }
 
 export const TokenUsageGauge: React.FC<TokenUsageGaugeProps> = ({
   rawMarkdown,
   variant = 'compact',
-  maxBudget = 4000
+  maxBudget,
+  preset
 }) => {
   const [showDetails, setShowDetails] = useState(false);
+
+  const effectiveBudget = maxBudget ?? (preset ? MODEL_BUDGET_PROFILES[preset]?.safeWindowTokens : 4000);
 
   const charCount = rawMarkdown.length;
   // Standard heuristic: 1 token ≈ 4 characters
@@ -20,7 +26,7 @@ export const TokenUsageGauge: React.FC<TokenUsageGaugeProps> = ({
   const wordCount = rawMarkdown.trim() ? rawMarkdown.trim().split(/\s+/).length : 0;
   const lineCount = rawMarkdown ? rawMarkdown.split(/\r?\n/).length : 0;
 
-  const percentage = Math.min(100, Math.round((estimatedTokens / maxBudget) * 100));
+  const percentage = Math.min(100, Math.round((estimatedTokens / effectiveBudget) * 100));
 
   // Determine health color tier
   let colorTier = 'emerald';
@@ -84,7 +90,7 @@ export const TokenUsageGauge: React.FC<TokenUsageGaugeProps> = ({
               </div>
               <div className="flex justify-between text-slate-400">
                 <span>Target Pinned Budget:</span>
-                <span className="text-slate-300">{maxBudget.toLocaleString()} tokens</span>
+                <span className="text-slate-300">{effectiveBudget.toLocaleString()} tokens</span>
               </div>
             </div>
 

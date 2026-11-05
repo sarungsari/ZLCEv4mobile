@@ -30,6 +30,13 @@ import {
   getAIProviderLabel, 
   estimateTokenCount 
 } from '../../utils/contextPackGenerator';
+import { TokenBudgetSelector } from './TokenBudgetSelector';
+import { 
+  pruneContextForBudget, 
+  estimateTokens, 
+  calculateTokenSafety, 
+  getModelBudgetProfile 
+} from '../../utils/tokenBudgetAdapter';
 import { copyText } from '../../utils/clipboard';
 import { downloadMarkdownBlob } from '../../utils/fileExport';
 import { parseTasksMarkdown } from '../../utils/markdownParser';
@@ -97,7 +104,7 @@ export const ContextPackTab: React.FC<ContextPackTabProps> = ({
     if (inProgress) return inProgress.id;
     const ready = sessionState.tasks.find(t => t.status === 'READY');
     if (ready) return ready.id;
-    return 'TASK-013';
+    return 'TASK-014';
   });
 
   // Active Team Member State
@@ -132,8 +139,11 @@ export const ContextPackTab: React.FC<ContextPackTabProps> = ({
   // Target AI Provider
   const [targetAi, setTargetAi] = useState<TargetAIProvider>('gemini');
 
-  // Token Budget Preset
+  // Token Budget Preset (TASK-014)
   const [tokenBudgetPreset, setTokenBudgetPreset] = useState<TokenBudgetPreset>('gemini-1m');
+
+  // Smart Pruning toggle (TASK-014)
+  const [enableAutoPruning, setEnableAutoPruning] = useState<boolean>(true);
 
   // Mode
   const [mode, setMode] = useState<'FULL' | 'LITE'>('FULL');
@@ -155,15 +165,15 @@ export const ContextPackTab: React.FC<ContextPackTabProps> = ({
     return {
       id: selectedTaskId,
       name: catalogItem?.title || `Implementasi ${selectedTaskId}`,
-      dependencies: catalogItem?.dependencies || 'TASK-012',
-      status: 'IN_PROGRESS',
+      dependencies: catalogItem?.dependencies || 'TASK-013',
+      status: 'READY',
       evidence: '-',
       approved: '-'
     };
   }, [selectedTaskId, sessionState.tasks, taskDetailMap]);
 
-  // Generate the Context Pack
-  const contextPackOutput = useMemo(() => {
+  // Generate the raw Context Pack
+  const rawContextPackOutput = useMemo(() => {
     const detail = taskDetailMap.get(selectedTaskId);
     return generatePortableContextPack({
       task: currentTask,
@@ -177,9 +187,28 @@ export const ContextPackTab: React.FC<ContextPackTabProps> = ({
     });
   }, [currentTask, selectedTaskId, taskDetailMap, sessionState, activeMember, targetAi, tokenBudgetPreset, mode, customInstructions]);
 
+  // Apply Context Budget Adapter & Smart Pruning (TASK-014: Acceptance Criteria 3)
+  const pruningResult = useMemo(() => {
+    if (!enableAutoPruning) {
+      const origTokens = estimateTokens(rawContextPackOutput.markdown);
+      return {
+        prunedMarkdown: rawContextPackOutput.markdown,
+        originalTokens: origTokens,
+        prunedTokens: origTokens,
+        tokensSaved: 0,
+        wasPruned: false,
+        pruningNotes: ['Auto-pruning dinonaktifkan; konteks disertakan tanpa pemangkasan.']
+      };
+    }
+    return pruneContextForBudget(rawContextPackOutput.markdown, tokenBudgetPreset);
+  }, [rawContextPackOutput.markdown, tokenBudgetPreset, enableAutoPruning]);
+
+  const finalMarkdown = pruningResult.prunedMarkdown;
+  const finalTokenCount = pruningResult.prunedTokens;
+
   // Copy Context Pack Handler
   const handleCopy = async () => {
-    const success = await copyText(contextPackOutput.markdown);
+    const success = await copyText(finalMarkdown);
     if (success) {
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
@@ -188,8 +217,8 @@ export const ContextPackTab: React.FC<ContextPackTabProps> = ({
 
   // Download Context Pack Handler
   const handleDownload = () => {
-    const filename = `CONTEXT_PACK_${selectedTaskId}_${activeMember.id}.md`;
-    downloadMarkdownBlob(contextPackOutput.markdown, { filename });
+    const filename = `CONTEXT_PACK_${selectedTaskId}_${tokenBudgetPreset}_${activeMember.id}.md`;
+    downloadMarkdownBlob(finalMarkdown, { filename });
   };
 
   return (
@@ -258,6 +287,51 @@ export const ContextPackTab: React.FC<ContextPackTabProps> = ({
         </div>
       </div>
 
+      {/* Claude & ChatGPT Handover Quick Bar */}
+      <div className="bg-gradient-to-r from-amber-950/40 via-purple-950/30 to-indigo-950/40 border border-amber-500/30 rounded-2xl p-4 sm:p-5 shadow-lg space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400 shrink-0">
+              <Zap className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Estafet AI Baru</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-purple-900/60 border border-purple-700/60 text-purple-200">Claude &amp; ChatGPT Ready</span>
+              </div>
+              <h3 className="text-sm sm:text-base font-bold text-white">
+                Siap Melanjutkan Task Berikutnya di Claude atau ChatGPT?
+              </h3>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Gunakan paket bundel ZIP berisi 20 berkas status &amp; instruksi ZLCE, atau salin prompt siap pakai untuk <strong className="text-amber-300 font-mono">TASK-014</strong>.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
+            <a
+              href="/assets/zlce-claude-chatgpt-bundle.zip"
+              download="zlce-claude-chatgpt-bundle.zip"
+              className="touch-target-44 min-h-[44px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-mono font-bold bg-amber-600 hover:bg-amber-500 text-white shadow-md active:scale-95 transition"
+              title="Unduh 20 berkas lengkap dalam format ZIP untuk diunggah ke Claude atau ChatGPT"
+            >
+              <Download className="w-4 h-4" />
+              <span>Unduh Bundle ZIP (80 KB)</span>
+            </a>
+
+            {onNavigateTab && (
+              <button
+                onClick={() => onNavigateTab('tutorial')}
+                className="touch-target-44 min-h-[44px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-mono bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition"
+              >
+                <span>Tutorial Step</span>
+                <ArrowRight className="w-3.5 h-3.5 text-cyan-400" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* 2. Configuration & Parameter Form Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Left Column (2 Cols): Task & AI Engine Controls */}
@@ -306,6 +380,7 @@ export const ContextPackTab: React.FC<ContextPackTabProps> = ({
                     if (val === 'gemini') setTokenBudgetPreset('gemini-1m');
                     else if (val === 'claude') setTokenBudgetPreset('claude-30k');
                     else if (val === 'chatgpt') setTokenBudgetPreset('gpt-128k');
+                    else if (val === 'deepseek') setTokenBudgetPreset('deepseek-64k');
                     else setTokenBudgetPreset('compact-8k');
                   }}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-100 font-mono focus:outline-none focus:border-cyan-500 touch-target-44"
@@ -335,12 +410,16 @@ export const ContextPackTab: React.FC<ContextPackTabProps> = ({
                   <option value="gemini-1m">Gemini 1M+ (Komprehensif Lengkap)</option>
                   <option value="claude-30k">Claude 30K (Presisi Tinggi Terfokus)</option>
                   <option value="gpt-128k">GPT 128K (Standar Lengkap)</option>
+                  <option value="deepseek-64k">DeepSeek 64K (Penalaran &amp; Reasoning Buffer)</option>
                   <option value="compact-8k">Compact 8K (Cepat &amp; Hemat RAM Mobile)</option>
+                  <option value="freebuff-4k">FreeBuff 4K (Ultra-Lean Buffer Proteksi Kuota Free)</option>
                 </select>
                 <p className="text-[10px] text-slate-400 font-mono">
                   {tokenBudgetPreset === 'gemini-1m' ? 'Jendela 1M: Menampilkan detail arsitektur penuh.' :
                    tokenBudgetPreset === 'claude-30k' ? 'Jendela 30K: Pangkas ke Tier 0 ringkas + task aktif.' :
                    tokenBudgetPreset === 'gpt-128k' ? 'Jendela 128K: Standar penuh seimbang.' :
+                   tokenBudgetPreset === 'deepseek-64k' ? 'Jendela 64K: Alokasi ruang penalaran (thinking buffer) DeepSeek R1/V3.' :
+                   tokenBudgetPreset === 'freebuff-4k' ? 'Jendela 4K: Buffer proteksi kuota ketat akun gratis agar terhindar dari rate limit.' :
                    'Jendela 8K: Super ringkas untuk handoff cepat di tablet.'}
                 </p>
               </div>
@@ -440,15 +519,21 @@ export const ContextPackTab: React.FC<ContextPackTabProps> = ({
             <div className="space-y-2 text-slate-300">
               <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
                 <span className="text-slate-400">Estimasi Token:</span>
-                <span className="text-cyan-300 font-bold">~{contextPackOutput.metadata.estimatedTokens.toLocaleString()} token</span>
+                <span className="text-cyan-300 font-bold">~{finalTokenCount.toLocaleString()} token</span>
               </div>
+              {pruningResult.tokensSaved > 0 && (
+                <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
+                  <span className="text-emerald-400">Efisiensi Pemangkasan:</span>
+                  <span className="text-emerald-300 font-bold">-~{pruningResult.tokensSaved.toLocaleString()} token</span>
+                </div>
+              )}
               <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
                 <span className="text-slate-400">Karakter Teks:</span>
-                <span className="text-slate-200">{contextPackOutput.metadata.characterCount.toLocaleString()} chars</span>
+                <span className="text-slate-200">{finalMarkdown.length.toLocaleString()} chars</span>
               </div>
               <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
                 <span className="text-slate-400">Cabang Git Terikat:</span>
-                <span className="text-emerald-400 font-bold truncate max-w-[150px]">{contextPackOutput.metadata.gitBranch}</span>
+                <span className="text-emerald-400 font-bold truncate max-w-[150px]">{rawContextPackOutput.metadata.gitBranch}</span>
               </div>
               <div className="flex items-center justify-between py-1">
                 <span className="text-slate-400">Target Sentuh Tablet:</span>
@@ -458,6 +543,18 @@ export const ContextPackTab: React.FC<ContextPackTabProps> = ({
           </div>
         </div>
       </div>
+
+      {/* 2b. TASK-014 Context Budget Manager & Token Quota Adapter */}
+      <TokenBudgetSelector
+        selectedPreset={tokenBudgetPreset}
+        onSelectPreset={setTokenBudgetPreset}
+        tokenCount={finalTokenCount}
+        tokensSaved={pruningResult.tokensSaved}
+        isPruned={pruningResult.wasPruned}
+        enableAutoPruning={enableAutoPruning}
+        onToggleAutoPruning={setEnableAutoPruning}
+        pruningNotes={pruningResult.pruningNotes}
+      />
 
       {/* 3. Live Context Pack Preview Card */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl space-y-4">
@@ -514,14 +611,14 @@ export const ContextPackTab: React.FC<ContextPackTabProps> = ({
         {activeTabMode === 'raw' ? (
           <textarea
             readOnly
-            value={contextPackOutput.markdown}
+            value={finalMarkdown}
             rows={18}
             className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 font-mono text-xs text-cyan-300/90 leading-relaxed focus:outline-none select-all"
           />
         ) : (
           <div className="bg-slate-950 p-4 sm:p-5 rounded-xl border border-slate-800 max-h-[500px] overflow-y-auto space-y-4 text-xs font-mono text-slate-300 leading-relaxed scrollbar-thin">
             <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-slate-200">
-              {contextPackOutput.markdown}
+              {finalMarkdown}
             </pre>
           </div>
         )}

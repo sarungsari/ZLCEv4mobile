@@ -209,7 +209,10 @@ export const App: React.FC = () => {
           )}
 
           {activeTab === 'prompt-engine' && (
-            <PromptEngineTab onNavigateTab={(tab) => setActiveTab(tab as TabType)} />
+            <PromptEngineTab 
+              sessionState={stateData}
+              onNavigateTab={(tab) => setActiveTab(tab as TabType)} 
+            />
           )}
 
           {activeTab === 'runtime-engine' && <RuntimeEngineTab />}
