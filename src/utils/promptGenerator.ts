@@ -136,6 +136,10 @@ export function getModelStopToken(provider: TargetAIProvider): string {
       return '<<<END_GPT_ZLCE_RESPONSE>>>';
     case 'deepseek':
       return '<<<END_DEEPSEEK_ZLCE_RESPONSE>>>';
+    case 'copilot':
+      return '<<<END_COPILOT_ZLCE_RESPONSE>>>';
+    case 'cursor':
+      return '<<<END_CURSOR_ZLCE_RESPONSE>>>';
     case 'qwen':
       return '<<<END_QWEN_ZLCE_RESPONSE>>>';
     case 'generic':
@@ -169,6 +173,16 @@ function getProviderSpecificRules(provider: TargetAIProvider): string {
 - Manfaatkan buffer penalaran (*Chain-of-Thought*) untuk menganalisis edge case sebelum menyusun kode.
 - Pastikan kode kompatibel penuh dengan standar POSIX/Linux, Termux Android, dan Node.js v22.
 - Jangan gunakan modul biner native yang memerlukan kompilasi C++ berat di perangkat mobile.`;
+    case 'copilot':
+      return `### SPESIFIKASI ENGINE: GITHUB COPILOT (Chat & Edits Mode)
+- Format respons langsung berupa blok kode per-berkas yang rapi tanpa elipsis.
+- Patuhi standar TypeScript modern, tanpa tipe 'any' implisit, dan dokumentasikan perubahan esensial.
+- Pastikan target sentuh minimal 44x44px untuk seluruh komponen interaktif.`;
+    case 'cursor':
+      return `### SPESIFIKASI ENGINE: CURSOR AI (Composer & Agent Mode)
+- Dukung kemampuan multi-file diffing dengan menandai setiap berkas secara eksplisit ('--- /path/to/file ---').
+- Jangan buat snippet parsial; hasilkan keseluruhan berkas agar Composer dapat mengaplikasikan diff secara deterministik.
+- Selaras dengan direktif .cursorrules dan arsitektur Zero-Loss ZLCE.`;
     case 'qwen':
       return `### SPESIFIKASI ENGINE: QWEN 2.5 CODER (Clean Implementation Mode)
 - Fokus pada implementasi kode murni yang efisien, hemat memori RAM, dan zero-leak.

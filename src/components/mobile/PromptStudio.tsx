@@ -69,6 +69,8 @@ export const PromptStudio: React.FC<PromptStudioProps> = ({
     else if (provider === 'claude') setTokenBudgetPreset('claude-30k');
     else if (provider === 'chatgpt') setTokenBudgetPreset('gpt-128k');
     else if (provider === 'deepseek') setTokenBudgetPreset('deepseek-64k');
+    else if (provider === 'copilot') setTokenBudgetPreset('copilot-32k');
+    else if (provider === 'cursor') setTokenBudgetPreset('cursor-64k');
     else if (provider === 'qwen') setTokenBudgetPreset('compact-8k');
     else setTokenBudgetPreset('compact-8k');
   };
@@ -208,6 +210,8 @@ export const PromptStudio: React.FC<PromptStudioProps> = ({
     gemini: { name: 'Gemini', url: 'https://gemini.google.com/app', color: 'hover:text-cyan-400' },
     chatgpt: { name: 'ChatGPT', url: 'https://chatgpt.com/', color: 'hover:text-emerald-400' },
     deepseek: { name: 'DeepSeek', url: 'https://chat.deepseek.com/', color: 'hover:text-sky-400' },
+    copilot: { name: 'GitHub Copilot', url: 'https://github.com/copilot', color: 'hover:text-teal-400' },
+    cursor: { name: 'Cursor AI', url: 'https://cursor.com', color: 'hover:text-violet-400' },
     qwen: { name: 'Qwen Chat', url: 'https://chat.qwenlm.ai/', color: 'hover:text-violet-400' },
     generic: { name: 'Browser AI', url: 'https://claude.ai/new', color: 'hover:text-slate-300' }
   };
@@ -325,6 +329,8 @@ export const PromptStudio: React.FC<PromptStudioProps> = ({
                 { id: 'gemini', name: 'Gemini 1.5/2.0', color: 'border-cyan-500/40 text-cyan-300' },
                 { id: 'chatgpt', name: 'ChatGPT 4o', color: 'border-emerald-500/40 text-emerald-300' },
                 { id: 'deepseek', name: 'DeepSeek V3/R1', color: 'border-sky-500/40 text-sky-300' },
+                { id: 'copilot', name: 'Copilot', color: 'border-teal-500/40 text-teal-300' },
+                { id: 'cursor', name: 'Cursor AI', color: 'border-violet-500/40 text-violet-300' },
                 { id: 'qwen', name: 'Qwen 2.5', color: 'border-violet-500/40 text-violet-300' },
                 { id: 'generic', name: 'Universal', color: 'border-slate-500/40 text-slate-300' }
               ].map(item => {
@@ -485,7 +491,7 @@ export const PromptStudio: React.FC<PromptStudioProps> = ({
             <span className="text-[11px] text-slate-400 font-semibold block">
               Buka AI di Tab Browser Tablet:
             </span>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               <a
                 href="https://claude.ai/new"
                 target="_blank"
@@ -520,6 +526,24 @@ export const PromptStudio: React.FC<PromptStudioProps> = ({
                 className="min-h-[40px] px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-sky-300 border border-slate-800 hover:border-sky-500/50 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all"
               >
                 <span>DeepSeek</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+              <a
+                href="https://github.com/copilot"
+                target="_blank"
+                rel="noreferrer"
+                className="min-h-[40px] px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-teal-300 border border-slate-800 hover:border-teal-500/50 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all"
+              >
+                <span>Copilot</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+              <a
+                href="https://cursor.com"
+                target="_blank"
+                rel="noreferrer"
+                className="min-h-[40px] px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-violet-300 border border-slate-800 hover:border-violet-500/50 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition-all"
+              >
+                <span>Cursor AI</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>

@@ -28,9 +28,10 @@ import { validateSessionState } from '../utils/zlceValidator';
 interface RecoveryTabProps {
   stateData: ParsedSessionState;
   rawMarkdown?: string;
+  onNavigateTab?: (tab: any) => void;
 }
 
-export const RecoveryTab: React.FC<RecoveryTabProps> = ({ stateData, rawMarkdown }) => {
+export const RecoveryTab: React.FC<RecoveryTabProps> = ({ stateData, rawMarkdown, onNavigateTab }) => {
   const [projectMode, setProjectMode] = useState<'LITE' | 'FULL'>('LITE');
   const [activeMode, setActiveMode] = useState<'wizard' | 'presets'>('wizard');
   const [selectedCase, setSelectedCase] = useState<'A' | 'B' | 'C' | 'D'>('B');
@@ -520,6 +521,18 @@ ${rawMarkdown || '<!-- Gunakan berkas SESSION_STATE.md aktual proyek -->'}
             {copiedBundle ? <Check className="w-4 h-4 text-white" /> : <Zap className="w-4 h-4" />}
             {copiedBundle ? 'Bundel Tersalin!' : 'Salin Bundel All-in-One'}
           </button>
+
+          {onNavigateTab && (
+            <button
+              type="button"
+              onClick={() => onNavigateTab('result-capture')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-950/70 hover:bg-teal-900 text-teal-300 border border-teal-700/80 transition"
+              title="Buka Result Capture Module untuk menempel solusi AI dan menyematkan provenance"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-teal-400" />
+              <span>Result Capture (Injeksi Provenance)</span>
+            </button>
+          )}
         </div>
       </div>
 

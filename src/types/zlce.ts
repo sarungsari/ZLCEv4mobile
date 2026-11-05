@@ -7,6 +7,7 @@ export type TabType =
   | 'session' 
   | 'workspace-reader'
   | 'context-pack'
+  | 'result-capture'
   | 'initiation' 
   | 'prompt-engine' 
   | 'runtime-engine' 

@@ -1,39 +1,66 @@
-# PANDUAN EKSEKUSI HANDOVER UNTUK CLAUDE / CHATGPT
+# PANDUAN EKSEKUSI HANDOVER MULTI-AI (UNIVERSAL RELAY GENERATOR)
 ## ZLCE Mobile Workbench v4.0.0 — Zero-Loss Context Engineering
 
-Panduan ini disiapkan khusus untuk melanjutkan task berikutnya (**TASK-014: Context Budget Manager & Adapter Kuota Token per Model AI**) secara presisi di **Anthropic Claude (Claude 3.5 Sonnet)** atau **ChatGPT (GPT-4o)** tanpa kehilangan satu bit konteks pun (*Zero-Loss*).
+Dokumen ini menjelaskan arsitektur dan tata cara serah terima estafet (**Universal Multi-AI Relay Handover**) untuk memindahkan pengerjaan **task berapapun** (TASK-001 s/d TASK-043+) ke peramban AI luar (**Anthropic Claude, ChatGPT, Cursor, GitHub Copilot, Google Gemini, atau DeepSeek**) tanpa kehilangan satu bit konteks pun (*Zero-Loss Context Engineering*).
 
 ---
 
-## 1. IKHTISAR TASK BERIKUTNYA (TASK-014)
+## 1. MENGAPA GENERATOR ESTAFET BEKERJA UNTUK SEMUA TASK?
 
-* **ID Task:** `TASK-014`
-* **Nama Task:** `Context Budget Manager & Adapter Kuota Token per Model AI`
-* **Fase:** FASE 3 (Multi-AI Team Model & Context Engineering)
-* **Dependensi:** `TASK-013` (Portable Context Pack Generator — status: `DONE`)
-* **Status Task Saat Ini:** `READY` (Siap dieksekusi menjadi `IN_PROGRESS`)
-* **Target Berkas yang Dibangun/Dimodifikasi:**
-  1. `src/utils/tokenBudgetAdapter.ts` (Modul logika kalkulasi, pemotongan lampiran historis, dan adapter kuota)
-  2. `src/components/mobile/TokenBudgetSelector.tsx` (Komponen antarmuka ergonomis pemilih model & budget)
-  3. `src/components/TokenUsageGauge.tsx` & `src/components/mobile/ContextPackTab.tsx` (Integrasi visual pengukur kuota token)
-* **Acceptance Criteria (Kriteria Lulus Sesuai TASKS.md):**
-  1. Tersedia pilihan profil AI terstruktur:
-     - **Gemini**: Large Context (Kapasitas hingga 1.000.000 token, mode komprehensif, seluruh riwayat & berkas acuan).
-     - **Claude**: Mid Context (Batas aman 30.000–200.000 token, mode terfokus pada skema, task aktif, dan WAL).
-     - **ChatGPT**: Compact Context (Batas aman 8.000–32.000 token, mode ringkas terkonsolidasi, otomatis memotong lampiran historis berlebih).
-  2. Estimasi token ditampilkan secara visual dan real-time sebelum menyalin Context Pack.
-  3. Context Pack secara cerdas memotong lampiran historis audit log berlebih saat memilih profil kompak agar tidak melampaui kuota token request.
-* **Test Case:** `TC-P3-02` (Beralih antar profil AI dan verifikasi variasi panjang teks Markdown Context Pack).
-* **Perintah Verifikasi Akhir:**
-  ```bash
-  npm run build && python3 scripts/zlce-check.py .
-  ```
+Sesuai **Blueprint 14 (Multi-AI Team Model)**, kolaborasi tim estafet ditegakkan oleh 5 Invarian Matematika & Logika:
+1. **Invarian I1 (All in Files):** Sumber kebenaran tunggal adalah berkas Markdown (`SESSION_STATE.md`, `TASKS.md`, `BLUEPRINT.md`) dan kode repositori.
+2. **Invarian I2 (Cold-Start Resume):** Model AI baru dapat memulai giliran kerja dari nol tanpa memerlukan riwayat memori obrolan sebelumnya.
+3. **Invarian I3 (ZLCE Core Invariance):** Aturan 4 Gerbang Kualitas, WAL, dan larangan placeholder berlaku universal.
+4. **Invarian I4 (Strict Provenance Tracking):** Setiap perubahan wajib mencantumkan atribut `[Aktor, AI/Model, Akun Alias, Timestamp, Task ID]`.
+5. **Invarian I5 (Zero Lost Updates):** Branch per Task (`task/TASK-xxx`) mencegah konflik tim.
+
+Karena seluruh spesifikasi 43 task tersimpan di `TASKS.md`, sistem **Generator Estafet ZLCE Studio** secara dinamis merakit:
+- Judul, fase, dependensi, dan acceptance criteria persis untuk task yang dipilih.
+- Target berkas sumber yang harus dibuat atau dimodifikasi.
+- Aturan anti-placeholder mutlak (`NO // ... rest of code`).
+- Target sentuh ergonomis tablet minimal 44x44px (`min-h-[44px]`).
+- Stop token khusus model (Claude, ChatGPT, Cursor, Copilot, Gemini, DeepSeek).
 
 ---
 
-## 2. PROMPT SIAP SALIN UNTUK CLAUDE / CHATGPT
+## 2. CARA MENGGUNAKAN GENERATOR ESTAFET DI APLIKASI
 
-Salin seluruh teks di bawah ini ke jendela chat Claude atau ChatGPT baru Anda:
+1. **Buka Tab "Panduan & Skenario" atau "Paket Konteks":**
+   - Di sub-tampilan **Generator Estafet AI** (ikon Petir/Zap), sistem otomatis memilih task yang sedang berstatus `READY` (misalnya `TASK-017`).
+2. **Pilih Task Mana Saja:**
+   - Gunakan dropdown pemilih task untuk memilih task berapapun dari backlog (TASK-001 s/d TASK-043).
+   - Filter berdasarkan fase (Fase 3, Fase 4, Fase 5, dll.) atau gunakan kotak pencarian.
+3. **Pilih Target Model AI:**
+   - Tersedia tombol cepat untuk **Claude 3.5 Sonnet**, **ChatGPT (GPT-4o)**, **Cursor AI**, **GitHub Copilot**, **Gemini**, atau **DeepSeek**.
+4. **Pilih Tablet Driver (8 Anggota Estafet):**
+   - Eko, Oned, Cxperia, Sulistiyani, Layang, Acimau, Kepek, atau Gete.
+5. **Salin Prompt / Unduh Berkas:**
+   - Klik **"Salin Seluruh Prompt [TASK-ID]"** untuk 1-ketukan salin.
+   - Atau klik **"Unduh .md"** untuk menyimpan berkas `ESTAFET_[TASK-ID]_[AI].md`.
+
+---
+
+## 3. PROSEDUR 5 LANGKAH EKSEKUSI DI AI LUAR
+
+1. **Langkah 1: Unduh Bundle Berkas ZLCE (.zip)**
+   - Unduh `zlce-claude-chatgpt-bundle.zip` (berisi 20 berkas status & kontrol acuan).
+2. **Langkah 2: Buka Peramban AI di Tablet**
+   - Buka `claude.ai`, `chatgpt.com`, `cursor.com`, atau `github.com/copilot` dalam jendela obrolan baru bersih (*cold-start*).
+3. **Langkah 3: Lampirkan Berkas Konteks**
+   - Unggah berkas ZIP atau lampirkan `SESSION_STATE.md` dan `TASKS.md`.
+4. **Langkah 4: Tempelkan Prompt Mandat dari Generator Estafet**
+   - Tempelkan teks prompt yang telah digenerate dari Generator Estafet ZLCE Studio.
+5. **Langkah 5: Verifikasi di Termux & Capture Hasil**
+   - Salin keluaran solusi kode ke aplikasi ZLCE Studio pada menu **Result Capture**.
+   - Result Capture akan otomatis menginjeksi banner provenance (Invarian I4) dan mengalirkan status ke draft `SESSION_STATE.md` (WAL & Log Audit).
+   - Jalankan verifikasi di Termux:
+     ```bash
+     npm run build && python3 scripts/zlce-check.py . && python3 scripts/run-tests.py
+     ```
+
+---
+
+## 4. CONTOH PROMPT HASIL GENERATOR ESTAFET (TASK-017 SEBAGAI CONTOH)
 
 ```markdown
 Kamu adalah Senior Frontend & TypeScript Engineer yang bertindak sebagai AI Coding Engine untuk proyek ZLCE Mobile Workbench v4.0.0 (Zero-Loss Context Engineering Studio).
@@ -43,61 +70,20 @@ Kamu adalah Senior Frontend & TypeScript Engineer yang bertindak sebagai AI Codi
 2. Metodologi: Zero-Loss Context Engineering (ZLCE).
    - Invarian I1 (All in Files): Sumber kebenaran tunggal adalah file Markdown dan kode repositori.
    - Invarian I2 (Cold-Start Resume): Eksekusi mandiri tanpa asumsi ingatan chat sebelumnya.
+   - Invarian I4 (Strict Provenance Tracking): Menghasilkan kode teratribusi [Aktor, Model, Task].
    - Schema-before-Data: Tipe TypeScript murni dan antarmuka harus didefinisikan sebelum implementasi logika.
 3. ATURAN KODE MUTLAK:
    - Tulis kode LENGKAP tanpa placeholder, tanpa tanda elipsis ("// ... rest of code"), tanpa fungsi mockup kosong.
-   - Gunakan TypeScript murni yang kompatibel dengan React 19 dan Lucide-React.
-   - Sesuai dengan batasan layar tablet Android 8.7" (Samsung Tab A7 Lite): target sentuh minimal 44px (`min-h-[44px]`).
+   - Sesuai dengan batasan layar tablet Android 8.7" (Samsung Tab A7 Lite): target sentuh minimal 44px (min-h-[44px]).
+   - Dilarang mengarang waktu audit sintetis (gunakan format sumber atau "jam: ?").
 
-### MANDAT TUGAS: IMPLEMENTASI TASK-014
-Nama: Context Budget Manager & Adapter Kuota Token per Model AI
-Target File:
-1. `src/utils/tokenBudgetAdapter.ts`
-2. `src/components/mobile/TokenBudgetSelector.tsx`
-3. Update integrasi pada `src/components/mobile/ContextPackTab.tsx` dan `src/components/TokenUsageGauge.tsx`.
-
-### SPESIFIKASI DETAIL:
-1. `src/utils/tokenBudgetAdapter.ts`:
-   - Definisikan tipe profil model:
-     * `gemini-1m` (Limit: 1,000,000 token, Safe Window: 750,000)
-     * `claude-30k` (Limit: 30,000 token, Safe Window: 24,000)
-     * `gpt-128k` (Limit: 128,000 token, Safe Window: 96,000)
-     * `compact-8k` (Limit: 8,000 token, Safe Window: 6,500)
-   - Fungsi `pruneContextForBudget(markdown: string, budgetPreset: string)`:
-     * Menghitung estimasi token (~4 karakter per token untuk teks teknis campuran Indonesia/Inggris).
-     * Jika teks melebihi Safe Window, lakukan pemangkasan cerdas: pangkas Bagian 7 (Log Audit Historis lama) menjadi ringkasan 3 entri terakhir, pertahankan utuh Bagian 1 (Mandat Task Aktif), Bagian 2 (Jangkar Kebenaran Tier 0), dan Bagian 3 (WAL).
-   - Fungsi `calculateTokenSafety(tokenCount: number, budgetPreset: string)` mengembalikan status: 'safe' (hijau) | 'warning' (kuning) | 'danger' (merah).
-
-2. `src/components/mobile/TokenBudgetSelector.tsx`:
-   - Menyediakan pemilih profil model interaktif berbentuk kartu responsif atau segmented control (Gemini 1M, Claude 30K/Sonnet, GPT Compact 8K/128K).
-   - Menampilkan batas kuota, persentase utilisasi terhadap safe window, dan badge status visual.
-   - Target sentuh ergonomis ramah jempol (min 44px).
-
-3. Outputkan kode lengkap untuk berkas-berkas tersebut sekarang.
+### MANDAT TUGAS: IMPLEMENTASI TASK-017
+* Nama Task: Handover Manager Lintas AI & Deteksi Konflik Keputusan
+* Fase: FASE 3
+* Dependensi: TASK-016
+* Status: READY
+* Target Berkas:
+  1. src/components/mobile/HandoverManager.tsx
+  2. src/utils/handoverConflictDetector.ts
+* Stop Token: <<<END_CLAUDE_ZLCE_RESPONSE>>>
 ```
-
----
-
-## 3. PROSEDUR 5 LANGKAH SETELAH MENDAPATKAN KODE DARI CLAUDE / CHATGPT
-
-Setelah Claude atau ChatGPT memberikan kode:
-
-1. **Buka Berkas di Proyek:**
-   - Masukkan kode ke `src/utils/tokenBudgetAdapter.ts` dan `src/components/mobile/TokenBudgetSelector.tsx`.
-   - Pastikan import dan tipe tersambung dengan benar.
-2. **Jalankan Verifikasi Build:**
-   ```bash
-   npm run build
-   ```
-3. **Jalankan Linter Kepatuhan ZLCE:**
-   ```bash
-   python3 scripts/zlce-check.py .
-   ```
-4. **Perbarui SESSION_STATE.md (Pencatatan WAL & Task Matrix):**
-   - Di baris matriks task `TASK-014`: ubah status dari `READY` menjadi `DONE`, isi bukti verifikasi `npm run build && zlce-check pass`.
-   - Di bagian `3. WORK IN PROGRESS (WAL)`: catat langkah selesai, set Task Aktif berikutnya (`TASK-015: READY`).
-5. **Simpan Commit Git Atomik:**
-   ```bash
-   git add .
-   git commit -m "feat(context): complete TASK-014 context budget manager and token quota adapter"
-   ```

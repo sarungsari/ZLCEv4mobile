@@ -38,6 +38,7 @@ import {
   getModelBudgetProfile 
 } from '../../utils/tokenBudgetAdapter';
 import { copyText } from '../../utils/clipboard';
+import { generateRelayHandover } from '../../utils/relayHandoverGenerator';
 import { downloadMarkdownBlob } from '../../utils/fileExport';
 import { parseTasksMarkdown } from '../../utils/markdownParser';
 
@@ -287,7 +288,7 @@ export const ContextPackTab: React.FC<ContextPackTabProps> = ({
         </div>
       </div>
 
-      {/* Claude & ChatGPT Handover Quick Bar */}
+      {/* Generator Estafet Multi-AI Quick Bar */}
       <div className="bg-gradient-to-r from-amber-950/40 via-purple-950/30 to-indigo-950/40 border border-amber-500/30 rounded-2xl p-4 sm:p-5 shadow-lg space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-start sm:items-center gap-3">
@@ -296,35 +297,57 @@ export const ContextPackTab: React.FC<ContextPackTabProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Estafet AI Baru</span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-purple-900/60 border border-purple-700/60 text-purple-200">Claude &amp; ChatGPT Ready</span>
+                <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Generator Estafet AI</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-purple-900/60 border border-purple-700/60 text-purple-200">Semua Task Didukung</span>
               </div>
               <h3 className="text-sm sm:text-base font-bold text-white">
-                Siap Melanjutkan Task Berikutnya di Claude atau ChatGPT?
+                Siap Melanjutkan <strong className="text-amber-300 font-mono">{selectedTaskId}</strong> di Claude, ChatGPT, Cursor, atau Copilot?
               </h3>
               <p className="text-xs text-slate-300 mt-0.5">
-                Gunakan paket bundel ZIP berisi 20 berkas status &amp; instruksi ZLCE, atau salin prompt siap pakai untuk <strong className="text-amber-300 font-mono">TASK-014</strong>.
+                Gunakan paket bundel ZIP berisi 20 berkas status ZLCE, atau salin prompt estafet siap pakai untuk <strong className="text-amber-300 font-mono">{selectedTaskId}: {taskDetailMap.get(selectedTaskId)?.title || currentTask.name}</strong>.
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
+            <button
+              onClick={async () => {
+                const relay = generateRelayHandover({
+                  taskId: selectedTaskId,
+                  aiProvider: targetAi,
+                  activeMember,
+                  sessionState,
+                  taskDetail: taskDetailMap.get(selectedTaskId)
+                });
+                const success = await copyText(relay.fullPrompt);
+                if (success) {
+                  setIsCopied(true);
+                  setTimeout(() => setIsCopied(false), 2000);
+                }
+              }}
+              className="touch-target-44 min-h-[44px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-mono font-bold bg-amber-600 hover:bg-amber-500 text-white shadow-md active:scale-95 transition"
+              title={`Salin prompt estafet siap pakai untuk ${selectedTaskId}`}
+            >
+              {isCopied ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
+              <span>{isCopied ? 'Tersalin!' : `Prompt ${selectedTaskId}`}</span>
+            </button>
+
             <a
               href="/assets/zlce-claude-chatgpt-bundle.zip"
               download="zlce-claude-chatgpt-bundle.zip"
-              className="touch-target-44 min-h-[44px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-mono font-bold bg-amber-600 hover:bg-amber-500 text-white shadow-md active:scale-95 transition"
+              className="touch-target-44 min-h-[44px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-mono bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 shadow-md active:scale-95 transition"
               title="Unduh 20 berkas lengkap dalam format ZIP untuk diunggah ke Claude atau ChatGPT"
             >
-              <Download className="w-4 h-4" />
-              <span>Unduh Bundle ZIP (80 KB)</span>
+              <Download className="w-4 h-4 text-cyan-400" />
+              <span>Bundle ZIP</span>
             </a>
 
             {onNavigateTab && (
               <button
                 onClick={() => onNavigateTab('tutorial')}
-                className="touch-target-44 min-h-[44px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-mono bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition"
+                className="touch-target-44 min-h-[44px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-mono bg-indigo-950/80 hover:bg-indigo-900/80 border border-indigo-700/60 text-indigo-300 transition"
               >
-                <span>Tutorial Step</span>
+                <span>Buka Generator</span>
                 <ArrowRight className="w-3.5 h-3.5 text-cyan-400" />
               </button>
             )}
@@ -381,6 +404,8 @@ export const ContextPackTab: React.FC<ContextPackTabProps> = ({
                     else if (val === 'claude') setTokenBudgetPreset('claude-30k');
                     else if (val === 'chatgpt') setTokenBudgetPreset('gpt-128k');
                     else if (val === 'deepseek') setTokenBudgetPreset('deepseek-64k');
+                    else if (val === 'copilot') setTokenBudgetPreset('copilot-32k');
+                    else if (val === 'cursor') setTokenBudgetPreset('cursor-64k');
                     else setTokenBudgetPreset('compact-8k');
                   }}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-100 font-mono focus:outline-none focus:border-cyan-500 touch-target-44"
@@ -389,6 +414,8 @@ export const ContextPackTab: React.FC<ContextPackTabProps> = ({
                   <option value="claude">Anthropic Claude (3.5 Sonnet / Haiku)</option>
                   <option value="chatgpt">OpenAI ChatGPT (GPT-4o / o1)</option>
                   <option value="deepseek">DeepSeek (V3 / R1 / Coder)</option>
+                  <option value="copilot">GitHub Copilot (Chat / Edits / CLI)</option>
+                  <option value="cursor">Cursor AI (Composer / Agent / Rules)</option>
                   <option value="qwen">Alibaba Qwen (2.5 Coder)</option>
                   <option value="generic">Universal Standard (Semua Model AI)</option>
                 </select>
@@ -411,6 +438,8 @@ export const ContextPackTab: React.FC<ContextPackTabProps> = ({
                   <option value="claude-30k">Claude 30K (Presisi Tinggi Terfokus)</option>
                   <option value="gpt-128k">GPT 128K (Standar Lengkap)</option>
                   <option value="deepseek-64k">DeepSeek 64K (Penalaran &amp; Reasoning Buffer)</option>
+                  <option value="copilot-32k">Copilot 32K (Inline &amp; Task Focused)</option>
+                  <option value="cursor-64k">Cursor 64K (Multi-file Composer &amp; Rules)</option>
                   <option value="compact-8k">Compact 8K (Cepat &amp; Hemat RAM Mobile)</option>
                   <option value="freebuff-4k">FreeBuff 4K (Ultra-Lean Buffer Proteksi Kuota Free)</option>
                 </select>
@@ -419,6 +448,8 @@ export const ContextPackTab: React.FC<ContextPackTabProps> = ({
                    tokenBudgetPreset === 'claude-30k' ? 'Jendela 30K: Pangkas ke Tier 0 ringkas + task aktif.' :
                    tokenBudgetPreset === 'gpt-128k' ? 'Jendela 128K: Standar penuh seimbang.' :
                    tokenBudgetPreset === 'deepseek-64k' ? 'Jendela 64K: Alokasi ruang penalaran (thinking buffer) DeepSeek R1/V3.' :
+                   tokenBudgetPreset === 'copilot-32k' ? 'Jendela 32K: Mode optimal instruksi GitHub Copilot Chat/Edits.' :
+                   tokenBudgetPreset === 'cursor-64k' ? 'Jendela 64K: Mode multi-file diffing & Composer Cursor AI.' :
                    tokenBudgetPreset === 'freebuff-4k' ? 'Jendela 4K: Buffer proteksi kuota ketat akun gratis agar terhindar dari rate limit.' :
                    'Jendela 8K: Super ringkas untuk handoff cepat di tablet.'}
                 </p>

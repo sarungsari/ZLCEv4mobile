@@ -21,6 +21,7 @@ import { useSessionPersistence, SessionSnapshot, UseSessionPersistenceReturn } f
 import { MobileLayout } from './components/mobile/MobileLayout';
 import { WorkspaceReader } from './components/mobile/WorkspaceReader';
 import { ContextPackTab } from './components/mobile/ContextPackTab';
+import { ResultCaptureTab } from './components/mobile/ResultCaptureTab';
 import { ShieldCheck, Info, RotateCcw, Undo2, Redo2, Check } from 'lucide-react';
 
 export { useSessionPersistence };
@@ -200,6 +201,15 @@ export const App: React.FC = () => {
             />
           )}
 
+          {activeTab === 'result-capture' && (
+            <ResultCaptureTab
+              sessionState={stateData}
+              rawMarkdown={rawMarkdown}
+              onUpdateMarkdown={handleUpdateMarkdown}
+              onNavigateTab={(tab) => setActiveTab(tab as TabType)}
+            />
+          )}
+
           {activeTab === 'initiation' && (
             <LandingWizardTab
               stateData={stateData}
@@ -217,7 +227,13 @@ export const App: React.FC = () => {
 
           {activeTab === 'runtime-engine' && <RuntimeEngineTab />}
 
-          {activeTab === 'recovery' && <RecoveryTab stateData={stateData} rawMarkdown={rawMarkdown} />}
+          {activeTab === 'recovery' && (
+            <RecoveryTab 
+              stateData={stateData} 
+              rawMarkdown={rawMarkdown} 
+              onNavigateTab={(tab) => setActiveTab(tab as TabType)}
+            />
+          )}
 
           {activeTab === 'triage' && <RevisionTriageTab stateData={stateData} />}
 
@@ -225,7 +241,12 @@ export const App: React.FC = () => {
 
           {activeTab === 'templates' && <TemplatesTab />}
 
-          {activeTab === 'tutorial' && <TutorialTab />}
+          {activeTab === 'tutorial' && (
+            <TutorialTab 
+              sessionState={stateData} 
+              onNavigateTab={setActiveTab} 
+            />
+          )}
         </main>
 
         {/* Persistent Quick Ops Sidebar */}

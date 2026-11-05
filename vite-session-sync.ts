@@ -19,35 +19,43 @@ export function sessionSyncPlugin(): Plugin {
     // ignore
   }
 
-  // File watcher using polling so it works reliably in container/VM/Termux environments
-  try {
-    fs.watchFile(sessionFilePath, { interval: 500 }, (curr, prev) => {
-      if (curr.mtimeMs !== prev.mtimeMs && curr.mtimeMs !== lastKnownMtime) {
-        lastKnownMtime = curr.mtimeMs;
-        const payload = JSON.stringify({
-          type: 'DISK_FILE_CHANGED',
-          file: 'SESSION_STATE.md',
-          mtime: curr.mtimeMs,
-          size: curr.size,
-          timestamp: new Date().toISOString()
-        });
-
-        for (const client of sseClients) {
-          try {
-            client.write(`data: ${payload}\n\n`);
-          } catch {
-            sseClients.delete(client);
-          }
-        }
-      }
-    });
-  } catch (err) {
-    console.warn('[SessionSync] File watch initialization warning:', err);
-  }
-
   return {
     name: 'vite-plugin-session-sync',
+    apply: 'serve',
     configureServer(server: ViteDevServer) {
+      // File watcher using polling so it works reliably in container/VM/Termux environments
+      try {
+        fs.watchFile(sessionFilePath, { interval: 500 }, (curr, prev) => {
+          if (curr.mtimeMs !== prev.mtimeMs && curr.mtimeMs !== lastKnownMtime) {
+            lastKnownMtime = curr.mtimeMs;
+            const payload = JSON.stringify({
+              type: 'DISK_FILE_CHANGED',
+              file: 'SESSION_STATE.md',
+              mtime: curr.mtimeMs,
+              size: curr.size,
+              timestamp: new Date().toISOString()
+            });
+
+            for (const client of sseClients) {
+              try {
+                client.write(`data: ${payload}\n\n`);
+              } catch {
+                sseClients.delete(client);
+              }
+            }
+          }
+        });
+
+        server.httpServer?.on('close', () => {
+          try {
+            fs.unwatchFile(sessionFilePath);
+          } catch {
+            // ignore
+          }
+        });
+      } catch (err) {
+        console.warn('[SessionSync] File watch initialization warning:', err);
+      }
       server.middlewares.use((req, res, next) => {
         const rawUrl = req.url || '';
         const url = rawUrl.split('?')[0];

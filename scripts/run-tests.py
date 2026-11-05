@@ -110,8 +110,8 @@ import fs from 'fs';
 import { validateSessionStateIntegrity } from './src/utils/sessionStateValidator';
 import { MODEL_BUDGET_PROFILES, calculateTokenSafety, pruneContextForBudget } from './src/utils/tokenBudgetAdapter';
 
-// 1. Verify 6 profiles (including deepseek and freebuff)
-const presets = ['gemini-1m', 'claude-30k', 'gpt-128k', 'deepseek-64k', 'compact-8k', 'freebuff-4k'];
+// 1. Verify 8 profiles (including deepseek, freebuff, copilot, cursor)
+const presets = ['gemini-1m', 'claude-30k', 'gpt-128k', 'deepseek-64k', 'copilot-32k', 'cursor-64k', 'compact-8k', 'freebuff-4k'];
 for (const p of presets) {
   if (!MODEL_BUDGET_PROFILES[p]) throw new Error(`Missing profile: ${p}`);
 }
@@ -133,7 +133,7 @@ if (!prunedCompact.wasPruned || !prunedFreeBuff.wasPruned) {
 if (!prunedFreeBuff.prunedMarkdown.includes('TASK-014') || !prunedFreeBuff.prunedMarkdown.includes('Tier 0')) {
   throw new Error('FreeBuff pruning damaged active task or Tier 0 anchors');
 }
-console.log('TC-P3-02 verified successfully with DeepSeek and FreeBuff.');
+console.log('TC-P3-02 verified successfully with Copilot, Cursor, DeepSeek and FreeBuff.');
 """]
     )
     # 7. TC-P3-03: Structured Multi-Model Prompt Generator & Anti-Placeholder Rule Check
@@ -185,8 +185,8 @@ for (const arch of archetypes) {
   }
 }
 
-// 2. Verify Stop Tokens for specific providers
-const providers = ['claude', 'gemini', 'chatgpt', 'deepseek'] as const;
+// 2. Verify Stop Tokens for specific providers (including copilot and cursor)
+const providers = ['claude', 'gemini', 'chatgpt', 'deepseek', 'copilot', 'cursor'] as const;
 for (const prov of providers) {
   const res = generateStructuredPrompt({
     archetype: 'task-execution',
@@ -194,7 +194,7 @@ for (const prov of providers) {
     sessionState: session,
     activeMember: member,
     targetAi: prov,
-    tokenBudgetPreset: prov === 'gemini' ? 'gemini-1m' : prov === 'deepseek' ? 'deepseek-64k' : 'claude-30k'
+    tokenBudgetPreset: prov === 'gemini' ? 'gemini-1m' : prov === 'deepseek' ? 'deepseek-64k' : prov === 'copilot' ? 'copilot-32k' : prov === 'cursor' ? 'cursor-64k' : 'claude-30k'
   });
   const expectedToken = getModelStopToken(prov);
   if (!res.fullPrompt.includes(expectedToken)) {
@@ -205,7 +205,157 @@ for (const prov of providers) {
   }
 }
 
-console.log('TC-P3-03 verified successfully across all 4 archetypes and 4 AI providers.');
+console.log('TC-P3-03 verified successfully across all 4 archetypes and 6 AI providers.');
+"""]
+    )
+    if not ok:
+        failures += 1
+
+    # 8. TC-P3-04: Result Capture Module & Injeksi Provenance Otomatis Check
+    ok, _ = run_step(
+        "TC-P3-04 Result Capture Module & Injeksi Provenance Otomatis Check",
+        ["npx", "tsx", "-e", """
+import fs from 'fs';
+import { 
+  extractCodeBlocksAndProvenance, 
+  generateMarkdownProvenanceTag, 
+  generateCodeHeaderBanner, 
+  mergeResultIntoSessionStateMarkdown,
+  ResultProvenanceMetadata 
+} from './src/utils/provenanceInjector';
+
+const sampleProvenance: ResultProvenanceMetadata = {
+  taskId: 'TASK-016',
+  taskName: 'Result Capture Module dengan Injeksi Provenance Otomatis',
+  actorName: 'Eko Prasetyo',
+  actorAlias: 'eko',
+  actorEmail: 'eko@dev.id',
+  aiProvider: 'claude',
+  aiModelName: 'Claude 3.5 Sonnet',
+  accountAlias: 'Akun-Claude-Eko',
+  timestamp: '2026-11-05T00:31:34+07:00',
+  timestampWIB: '2026-11-05 07:31:34 WIB',
+  verificationStatus: 'PENDING_VERIFICATION'
+};
+
+// 1. Acceptance Criteria 2: Format Tag Provenance & Invarian I4
+const tag = generateMarkdownProvenanceTag(sampleProvenance);
+if (!tag.includes('ZLCE_PROVENANCE_START') || !tag.includes('ZLCE_PROVENANCE_END')) {
+  throw new Error('Provenance tag missing start/end markers');
+}
+if (!tag.includes('task_id: TASK-016') || !tag.includes('actor_name: Eko Prasetyo') || !tag.includes('ai_model: Claude 3.5 Sonnet')) {
+  throw new Error('Provenance tag missing mandatory Invariant I4 fields');
+}
+
+// 2. Acceptance Criteria 1: Extraction from raw AI response text
+const rawAiText = `
+Berikut adalah implementasi solusi untuk TASK-016:
+
+--- /src/components/MyTestComponent.tsx ---
+\`\`\`typescript
+import React from 'react';
+export const MyTestComponent: React.FC = () => {
+  return <div className="min-h-[44px]">Test Provenance</div>;
+};
+\`\`\`
+
+## 3. WORK IN PROGRESS (WAL)
+* **Task:** \`TASK-016\`
+* **Langkah Sedang Dikerjakan:** Verifikasi ekstraksi blok kode
+* **Berkas Direncanakan/Disentuh:** src/components/MyTestComponent.tsx
+* **Sudah Dilakukan:** Mengekstrak kode dengan benar
+* **Langkah Berikutnya (persis):** Jalankan pengujian TC-P3-04
+* **Perintah Verifikasi:** npm run build
+* **Diperbarui:** 2026-11-05 07:31:34 WIB
+`;
+
+const extracted = extractCodeBlocksAndProvenance(rawAiText, sampleProvenance);
+if (extracted.codeBlocks.length !== 1) {
+  throw new Error(`Expected 1 code block, found ${extracted.codeBlocks.length}`);
+}
+const block = extracted.codeBlocks[0];
+if (!block.filePath?.includes('MyTestComponent.tsx')) {
+  throw new Error(`Failed to detect file path from block: ${block.filePath}`);
+}
+if (!block.codeWithProvenance.includes('@provenance') || !block.codeWithProvenance.includes('TASK-016')) {
+  throw new Error('Code block missing injected provenance banner');
+}
+if (!extracted.detectedWalBlock || !extracted.detectedWalBlock.raw.includes('TASK-016')) {
+  throw new Error('Failed to detect embedded WAL block');
+}
+
+// 3. Acceptance Criteria 3: Streaming to draft SESSION_STATE.md
+const originalSession = fs.readFileSync('SESSION_STATE.md', 'utf8');
+const merged = mergeResultIntoSessionStateMarkdown(originalSession, sampleProvenance, extracted);
+if (!merged.updatedMarkdown.includes('Solusi AI Ditangkap untuk TASK-016')) {
+  throw new Error('Merged session state missing Audit Log entry for result capture');
+}
+if (!merged.updatedMarkdown.includes('TASK-016')) {
+  throw new Error('Merged session state missing WAL update reference');
+}
+
+console.log('TC-P3-04 verified successfully: Provenance tag valid, code extracted, WAL streamed.');
+"""]
+    )
+    if not ok:
+        failures += 1
+
+    # 9. TC-P3-05: Universal Relay Handover Generator Check (Any Task)
+    ok, _ = run_step(
+        "TC-P3-05 Universal Relay Handover Generator Check (Any Task)",
+        ["npx", "tsx", "-e", """
+import fs from 'fs';
+import { generateRelayHandover } from './src/utils/relayHandoverGenerator';
+import { parseSessionStateMarkdown, parseTasksMarkdown } from './src/utils/markdownParser';
+import { TEAM_MEMBERS } from './src/data/teamMembers';
+
+const sessionContent = fs.readFileSync('SESSION_STATE.md', 'utf8');
+const session = parseSessionStateMarkdown(sessionContent);
+const tasksContent = fs.readFileSync('TASKS.md', 'utf8');
+const parsedTasks = parseTasksMarkdown(tasksContent);
+const taskMap = new Map();
+parsedTasks.tasks.forEach(t => taskMap.set(t.id, t));
+const member = TEAM_MEMBERS[1]; // oned
+
+// 1. Verify generation works for ANY task (not stopping at task 14)
+const testTaskIds = ['TASK-001', 'TASK-014', 'TASK-016', 'TASK-017', 'TASK-028', 'TASK-043'];
+for (const tid of testTaskIds) {
+  const relay = generateRelayHandover({
+    taskId: tid,
+    aiProvider: 'claude',
+    activeMember: member,
+    sessionState: session,
+    taskDetailMap: taskMap,
+    handoverMode: 'direct-execution'
+  });
+
+  if (!relay.fullPrompt || relay.fullPrompt.length < 300) {
+    throw new Error(`Empty or too short relay prompt generated for task: ${tid}`);
+  }
+  if (!relay.fullPrompt.includes(tid)) {
+    throw new Error(`Generated relay prompt missing task ID: ${tid}`);
+  }
+  if (!relay.fullPrompt.includes('ANTI-PLACEHOLDER') || !relay.fullPrompt.includes('min-h-[44px]')) {
+    throw new Error(`Relay prompt for ${tid} missing mandatory anti-placeholder or touch target constraints`);
+  }
+  if (relay.steps.length !== 5) {
+    throw new Error(`Expected 5 tutorial steps, found ${relay.steps.length}`);
+  }
+}
+
+// 2. Verify C-I-D-I handover mode for TASK-017
+const cidiRelay = generateRelayHandover({
+  taskId: 'TASK-017',
+  aiProvider: 'cursor',
+  activeMember: member,
+  sessionState: session,
+  handoverMode: 'cidi-handover'
+});
+if (!cidiRelay.fullPrompt.includes('PROTOKOL SERAH TERIMA C-I-D-I') || !cidiRelay.fullPrompt.includes('<<<END_CURSOR_ZLCE_RESPONSE>>>')) {
+  throw new Error('CIDI handover mode missing C-I-D-I protocol or Cursor stop token');
+}
+
+console.log('TC-P3-05 verified successfully: Universal Relay Handover generates for any task (TASK-001 to TASK-043).');
 """]
     )
     if not ok:
@@ -213,7 +363,7 @@ console.log('TC-P3-03 verified successfully across all 4 archetypes and 4 AI pro
 
     print("=" * 60)
     if failures == 0:
-        print("RESULT: ALL TESTS PASSED (7/7 checks OK)")
+        print("RESULT: ALL TESTS PASSED (9/9 checks OK)")
         print("=" * 60)
         return 0
     else:

@@ -12,7 +12,7 @@ import { TokenBudgetPreset } from './contextPackGenerator';
 export interface ModelBudgetProfile {
   id: TokenBudgetPreset;
   name: string;
-  provider: 'gemini' | 'claude' | 'chatgpt' | 'deepseek' | 'universal';
+  provider: 'gemini' | 'claude' | 'chatgpt' | 'deepseek' | 'copilot' | 'cursor' | 'universal';
   contextCategory: 'large' | 'mid' | 'compact';
   maxTokenLimit: number;
   safeWindowTokens: number;
@@ -71,6 +71,30 @@ export const MODEL_BUDGET_PROFILES: Record<TokenBudgetPreset, ModelBudgetProfile
     badgeLabel: '64K DeepSeek',
     badgeColor: 'sky'
   },
+  'copilot-32k': {
+    id: 'copilot-32k',
+    name: 'GitHub Copilot (Mid Context)',
+    provider: 'copilot',
+    contextCategory: 'mid',
+    maxTokenLimit: 32000,
+    safeWindowTokens: 25000,
+    description: 'Mode Copilot Chat & Edits. Optimal untuk instruksi tugas atomik terarah dan modifikasi per-berkas di IDE.',
+    recommendedRole: 'Inline code completion, refactoring fungsi, integrasi komponen terarah',
+    badgeLabel: '32K Copilot',
+    badgeColor: 'teal'
+  },
+  'cursor-64k': {
+    id: 'cursor-64k',
+    name: 'Cursor AI Composer (Agent Context)',
+    provider: 'cursor',
+    contextCategory: 'mid',
+    maxTokenLimit: 64000,
+    safeWindowTokens: 52000,
+    description: 'Mode Cursor Composer & Agent. Mendukung multi-file diff context, fast codebase indexing, dan kepatuhan .cursorrules.',
+    recommendedRole: 'Multi-file editing, automated codebase agent, iterative diff application',
+    badgeLabel: '64K Cursor',
+    badgeColor: 'violet'
+  },
   'compact-8k': {
     id: 'compact-8k',
     name: 'ChatGPT / Mobile (Compact Context)',
@@ -98,9 +122,11 @@ export const MODEL_BUDGET_PROFILES: Record<TokenBudgetPreset, ModelBudgetProfile
 };
 
 /**
- * Mengambil profil model berdasarkan preset (mendukung alias deepseek & freebuff)
+ * Mengambil profil model berdasarkan preset (mendukung alias deepseek, freebuff, copilot, cursor)
  */
 export function getModelBudgetProfile(preset: TokenBudgetPreset | string): ModelBudgetProfile {
+  if (preset === 'copilot') return MODEL_BUDGET_PROFILES['copilot-32k'];
+  if (preset === 'cursor') return MODEL_BUDGET_PROFILES['cursor-64k'];
   if (preset === 'deepseek') return MODEL_BUDGET_PROFILES['deepseek-64k'];
   if (preset === 'freebuff') return MODEL_BUDGET_PROFILES['freebuff-4k'];
   return MODEL_BUDGET_PROFILES[preset as TokenBudgetPreset] || MODEL_BUDGET_PROFILES['gemini-1m'];

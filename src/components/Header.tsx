@@ -17,7 +17,8 @@ import {
   Users,
   Database,
   Layers,
-  Sparkles
+  Sparkles,
+  ClipboardCheck
 } from 'lucide-react';
 import { TabType, ValidationResult } from '../types/zlce';
 import { TokenUsageGauge } from './TokenUsageGauge';
@@ -259,6 +260,19 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <ShieldCheck className={`w-4 h-4 shrink-0 ${activeTab === 'prompt-engine' ? 'text-emerald-400' : 'text-slate-400'}`} />
             <span>Zero-Loss Prompt</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('result-capture')}
+            className={`touch-target-44 min-h-[44px] shrink-0 whitespace-nowrap flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
+              activeTab === 'result-capture'
+                ? 'bg-teal-500/20 text-teal-300 border border-teal-500/50 shadow-sm'
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <ClipboardCheck className={`w-4 h-4 shrink-0 ${activeTab === 'result-capture' ? 'text-teal-400' : 'text-slate-400'}`} />
+            <span>Result Capture</span>
+            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-teal-900/60 text-teal-200">I4</span>
           </button>
 
           <button

@@ -16,6 +16,8 @@ export type TargetAIProvider =
   | 'claude' 
   | 'chatgpt' 
   | 'deepseek' 
+  | 'copilot'
+  | 'cursor'
   | 'qwen' 
   | 'generic';
 
@@ -24,6 +26,8 @@ export type TokenBudgetPreset =
   | 'claude-30k'     // High-precision compact (8K-30K budget)
   | 'gpt-128k'       // Standard full (128K window)
   | 'deepseek-64k'   // DeepSeek V3/R1 with Reasoning Buffer (64K window)
+  | 'copilot-32k'    // GitHub Copilot Chat & Edits (32K window)
+  | 'cursor-64k'     // Cursor AI Composer / Agent (64K window)
   | 'compact-8k'     // Ultra-lightweight for slow mobile / quick handovers
   | 'freebuff-4k';   // Free Tier Buffer Mode (Ultra-lean 4K for strict limits)
 
@@ -80,6 +84,10 @@ export function getAIProviderLabel(provider: TargetAIProvider): string {
       return 'OpenAI ChatGPT (GPT-4o / o1)';
     case 'deepseek':
       return 'DeepSeek (V3 / R1 / Coder)';
+    case 'copilot':
+      return 'GitHub Copilot (Chat / Edits / CLI)';
+    case 'cursor':
+      return 'Cursor AI (Composer / Agent / Rules)';
     case 'qwen':
       return 'Alibaba Qwen (2.5 Coder)';
     case 'generic':
@@ -99,6 +107,12 @@ export function getStopTokenDirective(provider: TargetAIProvider): string {
       return '<<<END_GEMINI_ZLCE_RESPONSE>>>';
     case 'chatgpt':
       return '<<<END_GPT_ZLCE_RESPONSE>>>';
+    case 'deepseek':
+      return '<<<END_DEEPSEEK_ZLCE_RESPONSE>>>';
+    case 'copilot':
+      return '<<<END_COPILOT_ZLCE_RESPONSE>>>';
+    case 'cursor':
+      return '<<<END_CURSOR_ZLCE_RESPONSE>>>';
     default:
       return '<<<END_ZERO_LOSS_EXECUTION>>>';
   }

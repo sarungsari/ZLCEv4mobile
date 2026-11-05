@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   GraduationCap, 
   BookOpen, 
@@ -30,18 +30,106 @@ import {
   Shield,
   HelpCircle,
   Clock,
-  Zap
+  Zap,
+  Sliders
 } from 'lucide-react';
 import { copyText } from '../utils/clipboard';
-import { CANONICAL_USAGE_GUIDE_MD } from '../data/templates';
+import { CANONICAL_USAGE_GUIDE_MD, CURRENT_PROJECT_TASKS_MD } from '../data/templates';
+import { parseTasksMarkdown } from '../utils/markdownParser';
+
+import { ParsedSessionState, TabType, ZLCETask, ParsedBacklogTask } from '../types/zlce';
+import { TargetAIProvider } from '../utils/contextPackGenerator';
+import { TEAM_MEMBERS } from '../data/teamMembers';
+import { generateRelayHandover } from '../utils/relayHandoverGenerator';
+import { downloadMarkdownBlob } from '../utils/fileExport';
+import { parseSessionStateMarkdown } from '../utils/markdownParser';
+import { INITIAL_SESSION_STATE_MD } from '../data/templates';
 
 type ViewMode = 'canonical-usage' | 'interactive-scenarios' | 'prompt-catalog' | 'ai-handover-claude-gpt';
 type ScenarioType = 'new-project' | 'existing-project' | 'in-progress';
 
-export const TutorialTab: React.FC = () => {
+export interface TutorialTabProps {
+  sessionState?: ParsedSessionState;
+  onNavigateTab?: (tab: TabType) => void;
+  initialTaskId?: string;
+}
+
+export const TutorialTab: React.FC<TutorialTabProps> = ({
+  sessionState: propSessionState,
+  onNavigateTab,
+  initialTaskId
+}) => {
   const [viewMode, setViewMode] = useState<ViewMode>('canonical-usage');
   const [activeScenario, setActiveScenario] = useState<ScenarioType>('new-project');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Fallback to parsed initial session state if not passed
+  const sessionState = useMemo<ParsedSessionState>(() => {
+    if (propSessionState) return propSessionState;
+    return parseSessionStateMarkdown(INITIAL_SESSION_STATE_MD);
+  }, [propSessionState]);
+
+  // Relay Generator Interactive State (TASK BERAPAPUN)
+  const defaultTask = useMemo(() => {
+    if (initialTaskId) return initialTaskId;
+    if (sessionState.status.nextTask && sessionState.status.nextTask.startsWith('TASK-')) {
+      return sessionState.status.nextTask;
+    }
+    const readyTask = sessionState.tasks.find(t => t.status === 'READY');
+    if (readyTask) return readyTask.id;
+    return 'TASK-017';
+  }, [initialTaskId, sessionState]);
+
+  const [selectedTaskId, setSelectedTaskId] = useState<string>(defaultTask);
+  const [selectedAiProvider, setSelectedAiProvider] = useState<TargetAIProvider>('claude');
+  const [selectedDriverId, setSelectedDriverId] = useState<string>(() => {
+    try {
+      return localStorage.getItem('zlce_active_member_id') || 'member-01';
+    } catch {
+      return 'member-01';
+    }
+  });
+  const [handoverMode, setHandoverMode] = useState<'direct-execution' | 'cidi-handover'>('direct-execution');
+  const [phaseFilter, setPhaseFilter] = useState<string>('ALL');
+  const [taskSearch, setTaskSearch] = useState<string>('');
+
+  // Active driver member object
+  const activeDriver = useMemo(() => {
+    return TEAM_MEMBERS.find(m => m.id === selectedDriverId) || TEAM_MEMBERS[0];
+  }, [selectedDriverId]);
+
+  // Backlog task detail map
+  const taskDetailMap = useMemo(() => {
+    const parsed = parseTasksMarkdown(CURRENT_PROJECT_TASKS_MD);
+    const map = new Map<string, ParsedBacklogTask>();
+    parsed.tasks.forEach(t => map.set(t.id, t));
+    return map;
+  }, []);
+
+  // Compute live relay handover prompt for the selected task
+  const relayOutput = useMemo(() => {
+    return generateRelayHandover({
+      taskId: selectedTaskId,
+      aiProvider: selectedAiProvider,
+      activeMember: activeDriver,
+      sessionState,
+      handoverMode,
+      taskDetailMap
+    });
+  }, [selectedTaskId, selectedAiProvider, activeDriver, sessionState, handoverMode, taskDetailMap]);
+
+  // Filtered task list for the task selector
+  const filteredTasks = useMemo(() => {
+    return sessionState.tasks.filter(t => {
+      const detail = taskDetailMap.get(t.id);
+      const matchesPhase = phaseFilter === 'ALL' || detail?.phase === phaseFilter;
+      const matchesSearch = !taskSearch.trim() || 
+        t.id.toLowerCase().includes(taskSearch.toLowerCase()) || 
+        t.name.toLowerCase().includes(taskSearch.toLowerCase()) ||
+        (detail?.title && detail.title.toLowerCase().includes(taskSearch.toLowerCase()));
+      return matchesPhase && matchesSearch;
+    });
+  }, [sessionState.tasks, taskDetailMap, phaseFilter, taskSearch]);
 
   const copyToClipboard = async (text: string, id: string) => {
     const success = await copyText(text);
@@ -167,12 +255,15 @@ export const TutorialTab: React.FC = () => {
             }`}
           >
             <div className={`p-2 rounded-lg ${viewMode === 'ai-handover-claude-gpt' ? 'bg-amber-500/20 text-amber-300' : 'bg-slate-800 text-slate-400'}`}>
-              <Cpu className="w-5 h-5" />
+              <Zap className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-amber-400">Estafet AI Baru</div>
-              <div className="text-sm font-bold text-slate-100">Claude &amp; ChatGPT</div>
-              <div className="text-xs text-slate-400">Tutorial Step &amp; Bundle ZIP</div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold uppercase tracking-wider text-amber-400">Generator Estafet AI</span>
+                <span className="px-1.5 py-0.2 rounded bg-amber-900/60 text-[9px] font-mono text-amber-200">Semua Task</span>
+              </div>
+              <div className="text-sm font-bold text-slate-100">Multi-AI &amp; Multi-Task</div>
+              <div className="text-xs text-slate-400">Task Berapapun · Anti-Placeholder</div>
             </div>
           </button>
         </div>
@@ -900,11 +991,11 @@ export const TutorialTab: React.FC = () => {
         </div>
       )}
 
-      {/* VIEW 4: ESTAFET AI KE CLAUDE / CHATGPT & BUNDLE ZIP */}
+      {/* VIEW 4: GENERATOR ESTAFET MULTI-AI (UNIVERSAL ANY-TASK) */}
       {viewMode === 'ai-handover-claude-gpt' && (
         <div className="space-y-6 animate-fadeIn">
           {/* Hero Banner */}
-          <div className="bg-gradient-to-r from-amber-950/40 via-purple-950/30 to-indigo-950/50 border border-amber-500/40 rounded-2xl p-6 shadow-xl space-y-4">
+          <div className="bg-gradient-to-r from-amber-950/40 via-purple-950/30 to-indigo-950/50 border border-amber-500/40 rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
@@ -912,18 +1003,21 @@ export const TutorialTab: React.FC = () => {
                     <Zap className="w-5 h-5" />
                   </div>
                   <span className="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider">
-                    Blueprint 14: Multi-AI Relay Handover
+                    Blueprint 14: Universal Multi-AI Relay Generator
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-950/80 border border-emerald-700/60 text-emerald-300">
+                    Semua Task Didukung
                   </span>
                 </div>
                 <h3 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
-                  Estafet Pengerjaan Task di Claude atau ChatGPT
+                  Generator Estafet AI: Pindahkan Pengerjaan Task ke AI Luar
                 </h3>
-                <p className="text-sm text-slate-300 max-w-3xl leading-relaxed">
-                  Beralih pengerjaan ke <strong className="text-amber-300">Anthropic Claude (Claude 3.5 Sonnet)</strong> atau <strong className="text-indigo-300">ChatGPT (GPT-4o)</strong> tanpa kehilangan satu bit konteks pun. Seluruh dokumen status, backlog task, dan aturan ZLCE telah dibundel secara otomatis ke dalam berkas ZIP siap unggah.
+                <p className="text-xs sm:text-sm text-slate-300 max-w-3xl leading-relaxed">
+                  Beralih pengerjaan <strong className="text-amber-300">task berapapun</strong> (TASK-001 s/d TASK-043) ke <strong className="text-cyan-300">{relayOutput.aiProviderLabel}</strong> tanpa kehilangan satu bit konteks pun. Prompt digenerate secara dinamis mematuhi aturan anti-placeholder, touch target <code className="text-amber-300 font-mono">min-h-[44px]</code>, dan verifikasi ketat.
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row lg:flex-col gap-2 shrink-0">
+              <div className="flex flex-wrap sm:flex-nowrap lg:flex-col gap-2 shrink-0">
                 <a
                   href="/assets/zlce-claude-chatgpt-bundle.zip"
                   download="zlce-claude-chatgpt-bundle.zip"
@@ -934,105 +1028,225 @@ export const TutorialTab: React.FC = () => {
                 </a>
 
                 <button
-                  onClick={() => copyToClipboard(CLAUDE_CHATGPT_TASK014_PROMPT, 'prompt-task014')}
+                  onClick={() => copyToClipboard(relayOutput.fullPrompt, `prompt-${selectedTaskId}`)}
                   className="touch-target-44 min-h-[44px] flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-semibold bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 active:scale-95 transition"
                 >
-                  {copiedId === 'prompt-task014' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-amber-400" />}
-                  <span>{copiedId === 'prompt-task014' ? 'Prompt Tersalin!' : 'Salin Prompt TASK-014'}</span>
+                  {copiedId === `prompt-${selectedTaskId}` ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-amber-400" />}
+                  <span>{copiedId === `prompt-${selectedTaskId}` ? 'Prompt Tersalin!' : `Salin Prompt ${selectedTaskId}`}</span>
                 </button>
               </div>
             </div>
 
             {/* Quick Status Bar */}
             <div className="pt-3 border-t border-slate-800 flex flex-wrap items-center gap-2 text-xs font-mono">
-              <span className="text-slate-400">Target Task Berikutnya:</span>
+              <span className="text-slate-400">Target Task:</span>
               <span className="px-2.5 py-0.5 rounded bg-amber-950/70 border border-amber-800/60 text-amber-300 font-bold">
-                TASK-014 (Context Budget Manager &amp; Token Quota Adapter)
+                {relayOutput.taskId}: {relayOutput.taskName}
               </span>
               <span className="text-slate-500">|</span>
-              <span className="text-emerald-400">Status: READY</span>
+              <span className="text-slate-400">AI Target:</span>
+              <span className="px-2 py-0.5 rounded bg-cyan-950/70 border border-cyan-800/60 text-cyan-300 font-semibold">
+                {relayOutput.aiProviderLabel}
+              </span>
               <span className="text-slate-500">|</span>
-              <span className="text-cyan-300">Dependensi: TASK-013 (DONE)</span>
+              <span className="text-slate-400">Driver:</span>
+              <span className="text-indigo-300 font-semibold">{relayOutput.driver.name}</span>
+              <span className="text-slate-500">|</span>
+              <span className={relayOutput.safety.status === 'safe' ? 'text-emerald-400' : relayOutput.safety.status === 'warning' ? 'text-amber-400' : 'text-rose-400'}>
+                ~{relayOutput.estimatedTokens.toLocaleString()} tokens ({relayOutput.safety.statusLabel})
+              </span>
             </div>
           </div>
 
-          {/* 5-Step Tutorial Cards */}
+          {/* Interactive Generator Controls */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-cyan-400" />
+                <span>Konfigurasi Generator Estafet (Task Mana Pun)</span>
+              </h4>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSelectedTaskId(defaultTask)}
+                  className="touch-target-44 min-h-[44px] px-3 py-1.5 rounded-lg text-xs font-mono bg-cyan-950/80 hover:bg-cyan-900/80 border border-cyan-800/60 text-cyan-300 transition"
+                  title="Pilih task berikutnya yang siap dikerjakan"
+                >
+                  Task Siap/Aktif: {defaultTask}
+                </button>
+              </div>
+            </div>
+
+            {/* Control Grid: Task Selector + Phase Filter */}
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <label className="text-xs font-mono font-semibold text-slate-300">
+                  1. Pilih Mandat Task Aktif ({filteredTasks.length} dari {sessionState.tasks.length || 43} Task):
+                </label>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {['ALL', 'FASE 3', 'FASE 4', 'FASE 5', 'FASE 6'].map(phase => (
+                    <button
+                      key={phase}
+                      onClick={() => setPhaseFilter(phase)}
+                      className={`px-2 py-1 rounded text-[10px] font-mono transition ${
+                        phaseFilter === phase
+                          ? 'bg-amber-600 text-white font-bold'
+                          : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      {phase}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <div className="md:col-span-2">
+                  <select
+                    value={selectedTaskId}
+                    onChange={e => setSelectedTaskId(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-100 font-mono focus:outline-none focus:border-cyan-500 touch-target-44 min-h-[44px]"
+                  >
+                    {filteredTasks.map(t => {
+                      const detail = taskDetailMap.get(t.id);
+                      return (
+                        <option key={t.id} value={t.id}>
+                          {t.id}: {detail?.title || t.name} [{t.status}]
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    value={taskSearch}
+                    onChange={e => setTaskSearch(e.target.value)}
+                    placeholder="Cari task ID / nama..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs sm:text-sm text-slate-200 font-mono focus:outline-none focus:border-cyan-500 touch-target-44 min-h-[44px]"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Target AI Selection Buttons */}
+            <div className="space-y-1.5 pt-2">
+              <label className="text-xs font-mono font-semibold text-slate-300 block">
+                2. Pilih Target Model AI Penerima Estafet:
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                {[
+                  { id: 'claude', name: 'Claude 3.5 Sonnet', limit: '30K Mid', color: 'border-amber-500/60 bg-amber-950/30 text-amber-300' },
+                  { id: 'chatgpt', name: 'ChatGPT GPT-4o', limit: '128K Wide', color: 'border-indigo-500/60 bg-indigo-950/30 text-indigo-300' },
+                  { id: 'cursor', name: 'Cursor AI', limit: '64K Coding', color: 'border-cyan-500/60 bg-cyan-950/30 text-cyan-300' },
+                  { id: 'copilot', name: 'GitHub Copilot', limit: '32K Flow', color: 'border-blue-500/60 bg-blue-950/30 text-blue-300' },
+                  { id: 'gemini', name: 'Gemini Flash', limit: '1M Mega', color: 'border-emerald-500/60 bg-emerald-950/30 text-emerald-300' },
+                  { id: 'deepseek', name: 'DeepSeek Reasoner', limit: '64K Deep', color: 'border-purple-500/60 bg-purple-950/30 text-purple-300' },
+                ].map(item => (
+                  <button
+                    key={item.id}
+                    onClick={() => setSelectedAiProvider(item.id as TargetAIProvider)}
+                    className={`touch-target-44 min-h-[44px] p-2 rounded-xl border text-left transition flex flex-col justify-between ${
+                      selectedAiProvider === item.id
+                        ? `${item.color} ring-1 ring-amber-400 font-bold shadow-md`
+                        : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="text-xs truncate">{item.name}</div>
+                    <div className="text-[10px] font-mono opacity-80">{item.limit}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Tablet Driver Selection */}
+            <div className="space-y-1.5 pt-2">
+              <label className="text-xs font-mono font-semibold text-slate-300 block">
+                3. Tablet Driver (8 Anggota Estafet Resmi):
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1.5">
+                {TEAM_MEMBERS.map(m => (
+                  <button
+                    key={m.id}
+                    onClick={() => setSelectedDriverId(m.id)}
+                    className={`touch-target-44 min-h-[44px] p-1.5 rounded-lg border text-center transition ${
+                      selectedDriverId === m.id
+                        ? 'bg-cyan-950/80 border-cyan-500 text-cyan-300 font-bold shadow-sm'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <div className="text-xs truncate">{m.name}</div>
+                    <div className="text-[9px] text-slate-500 truncate">{m.role.split('/')[0]}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Handover Mode Selector */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-800/80">
+              <span className="text-xs font-mono text-slate-400">Mode Format Prompt:</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setHandoverMode('direct-execution')}
+                  className={`touch-target-44 min-h-[44px] px-3 py-1.5 rounded-xl text-xs font-mono transition ${
+                    handoverMode === 'direct-execution'
+                      ? 'bg-amber-600 text-white font-bold'
+                      : 'bg-slate-950 border border-slate-800 text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  Eksekusi Mandiri (Direct Mandate)
+                </button>
+                <button
+                  onClick={() => setHandoverMode('cidi-handover')}
+                  className={`touch-target-44 min-h-[44px] px-3 py-1.5 rounded-xl text-xs font-mono transition ${
+                    handoverMode === 'cidi-handover'
+                      ? 'bg-purple-600 text-white font-bold'
+                      : 'bg-slate-950 border border-slate-800 text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  Protokol C-I-D-I (Cold-Start Handover)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 5-Step Tutorial Cards tailored to the selected task & AI */}
           <div className="space-y-4">
             <h4 className="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
               <GraduationCap className="w-4 h-4 text-cyan-400" />
-              5 Langkah Singkat Eksekusi di Claude / ChatGPT:
+              5 Langkah Singkat Eksekusi {relayOutput.taskId} di {relayOutput.aiProviderLabel}:
             </h4>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Step 1 */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2 relative overflow-hidden">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono font-bold text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/40">
-                    Langkah 1
-                  </span>
-                  <Download className="w-4 h-4 text-slate-500" />
+              {relayOutput.steps.map(step => (
+                <div key={step.stepNumber} className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2 relative overflow-hidden">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono font-bold text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/40">
+                      Langkah {step.stepNumber}
+                    </span>
+                    {step.stepNumber === 1 && <Download className="w-4 h-4 text-slate-500" />}
+                    {step.stepNumber === 2 && <ExternalLink className="w-4 h-4 text-slate-500" />}
+                    {step.stepNumber === 3 && <FileCode2 className="w-4 h-4 text-slate-500" />}
+                    {step.stepNumber === 4 && <Copy className="w-4 h-4 text-slate-500" />}
+                    {step.stepNumber === 5 && <Terminal className="w-4 h-4 text-slate-500" />}
+                  </div>
+                  <h5 className="text-sm font-bold text-white">{step.title}</h5>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {step.description}
+                  </p>
+                  {step.targetUrl && (
+                    <div className="pt-1">
+                      <a
+                        href={step.targetUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] font-mono text-cyan-400 hover:text-cyan-300 underline"
+                      >
+                        Buka {relayOutput.aiProviderLabel} <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  )}
                 </div>
-                <h5 className="text-sm font-bold text-white">Unduh Bundle Berkas (.zip)</h5>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Klik tombol <strong>Unduh Bundle ZIP</strong> di atas. Anda akan mendapatkan berkas <code className="text-amber-300">zlce-claude-chatgpt-bundle.zip</code> berisi 20 berkas status &amp; spesifikasi lengkap.
-                </p>
-              </div>
-
-              {/* Step 2 */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2 relative overflow-hidden">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono font-bold text-cyan-400 bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800/40">
-                    Langkah 2
-                  </span>
-                  <ExternalLink className="w-4 h-4 text-slate-500" />
-                </div>
-                <h5 className="text-sm font-bold text-white">Buka Claude atau ChatGPT</h5>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Buka peramban di tablet: <strong>claude.ai</strong> (Claude 3.5 Sonnet) atau <strong>chatgpt.com</strong> (GPT-4o). Buka percakapan baru untuk memastikan cold-start bersih.
-                </p>
-              </div>
-
-              {/* Step 3 */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2 relative overflow-hidden">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono font-bold text-indigo-400 bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-800/40">
-                    Langkah 3
-                  </span>
-                  <FileCode2 className="w-4 h-4 text-slate-500" />
-                </div>
-                <h5 className="text-sm font-bold text-white">Lampirkan / Unggah Berkas</h5>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Unggah berkas ZIP langsung ke chat Claude/ChatGPT. Model AI akan mengekstrak <code className="text-indigo-300">SESSION_STATE.md</code>, <code className="text-indigo-300">TASKS.md</code>, dan petunjuk handover.
-                </p>
-              </div>
-
-              {/* Step 4 */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2 relative overflow-hidden">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/40">
-                    Langkah 4
-                  </span>
-                  <Copy className="w-4 h-4 text-slate-500" />
-                </div>
-                <h5 className="text-sm font-bold text-white">Salin &amp; Tempel Prompt TASK-014</h5>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Tempelkan prompt eksekusi yang telah disiapkan di bawah. Prompt ini secara eksplisit melarang placeholder kode dan menegakkan aturan Schema-before-Data.
-                </p>
-              </div>
-
-              {/* Step 5 */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2 relative overflow-hidden">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono font-bold text-purple-400 bg-purple-950/60 px-2 py-0.5 rounded border border-purple-800/40">
-                    Langkah 5
-                  </span>
-                  <Terminal className="w-4 h-4 text-slate-500" />
-                </div>
-                <h5 className="text-sm font-bold text-white">Verifikasi di Termux &amp; Update WAL</h5>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Masukkan kode ke berkas proyek, jalankan <code className="text-cyan-300">npm run build && python3 scripts/zlce-check.py .</code>, lalu perbarui status <code className="text-purple-300">SESSION_STATE.md</code>.
-                </p>
-              </div>
+              ))}
 
               {/* Invariant Note Card */}
               <div className="bg-gradient-to-br from-slate-900 to-emerald-950/30 border border-emerald-800/40 rounded-xl p-4 space-y-2">
@@ -1041,30 +1255,64 @@ export const TutorialTab: React.FC = () => {
                   <span>Garansi Zero-Loss Invariance</span>
                 </div>
                 <p className="text-[11px] text-slate-300 leading-relaxed">
-                  Karena AI membaca state murni dari berkas Markdown (Invarian I1), Anda dapat berpindah dari Gemini ke Claude atau sebaliknya kapan saja tanpa resiko inkonsistensi arsitektur.
+                  Karena AI membaca state murni dari berkas Markdown (Invarian I1) dan mengeksekusi mandat mandiri (Invarian I2), Anda dapat berpindah antar AI dan antar anggota kapan saja tanpa amnesia konteks.
                 </p>
               </div>
             </div>
           </div>
 
           {/* Prompt Ready-To-Copy Box */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
               <div>
-                <span className="text-xs font-mono font-bold text-amber-400 uppercase">Prompt Mandat Siap Pakai</span>
-                <h4 className="text-sm sm:text-base font-bold text-white">Prompt Eksekusi TASK-014 untuk Claude / ChatGPT</h4>
+                <span className="text-xs font-mono font-bold text-amber-400 uppercase">Prompt Mandat Siap Pakai (Universal)</span>
+                <h4 className="text-sm sm:text-base font-bold text-white">
+                  Prompt Eksekusi {relayOutput.taskId} ({relayOutput.taskName}) untuk {relayOutput.aiProviderLabel}
+                </h4>
               </div>
-              <button
-                onClick={() => copyToClipboard(CLAUDE_CHATGPT_TASK014_PROMPT, 'prompt-task014-full')}
-                className="touch-target-44 min-h-[44px] flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-mono font-bold bg-amber-600 hover:bg-amber-500 text-white shadow active:scale-95 transition"
-              >
-                {copiedId === 'prompt-task014-full' ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
-                <span>{copiedId === 'prompt-task014-full' ? 'Prompt Tersalin!' : 'Salin Seluruh Prompt'}</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => copyToClipboard(relayOutput.fullPrompt, `prompt-${relayOutput.taskId}-full`)}
+                  className="touch-target-44 min-h-[44px] flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-mono font-bold bg-amber-600 hover:bg-amber-500 text-white shadow active:scale-95 transition"
+                >
+                  {copiedId === `prompt-${relayOutput.taskId}-full` ? <Check className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
+                  <span>{copiedId === `prompt-${relayOutput.taskId}-full` ? 'Prompt Tersalin!' : 'Salin Seluruh Prompt'}</span>
+                </button>
+
+                <button
+                  onClick={() => downloadMarkdownBlob(relayOutput.fullPrompt, { filename: relayOutput.filename })}
+                  className="touch-target-44 min-h-[44px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-mono bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition"
+                  title="Unduh prompt dalam berkas .md"
+                >
+                  <Download className="w-4 h-4 text-cyan-400" />
+                  <span>Unduh .md</span>
+                </button>
+
+                <a
+                  href={relayOutput.aiWebUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="touch-target-44 min-h-[44px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-mono bg-cyan-950/80 hover:bg-cyan-900/80 border border-cyan-800/60 text-cyan-300 transition"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>Buka {relayOutput.aiProviderLabel}</span>
+                </a>
+
+                {onNavigateTab && (
+                  <button
+                    onClick={() => onNavigateTab('result-capture')}
+                    className="touch-target-44 min-h-[44px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-mono bg-emerald-950/80 hover:bg-emerald-900/80 border border-emerald-800/60 text-emerald-300 transition"
+                    title="Buka Result Capture untuk mengekstrak solusi AI"
+                  >
+                    <span>Lanjut Capture Hasil</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
 
-            <pre className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs font-mono text-slate-200 overflow-x-auto max-h-72 leading-relaxed whitespace-pre-wrap select-all">
-{CLAUDE_CHATGPT_TASK014_PROMPT}
+            <pre className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-xs font-mono text-slate-200 overflow-x-auto max-h-80 leading-relaxed whitespace-pre-wrap select-all">
+{relayOutput.fullPrompt}
             </pre>
           </div>
 
